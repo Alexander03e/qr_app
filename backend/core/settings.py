@@ -39,7 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
-    'users'
+    'users',
+    'analytics',
+    'clients',
+    'notifications',
+    'companies',
+    'queues'
 ]
 
 REST_FRAMEWORK = {
