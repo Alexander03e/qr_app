@@ -31,7 +31,6 @@ class JoinQueueClientSerializer(serializers.Serializer):
 
 class JoinQueueSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
-    client_id = serializers.IntegerField(required=False)
     client = JoinQueueClientSerializer(required=False)
 
     def validate(self, attrs):

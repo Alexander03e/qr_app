@@ -1,2 +1,6 @@
 @use 'scss-reset/reset';
 @use 'root' as *;
+
+body {
+    background-color: gray;
+}

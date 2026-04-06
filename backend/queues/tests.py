@@ -39,7 +39,10 @@ class QueueTicketApiTests(APITestCase):
 		queue = Queue.objects.create(branch=self.branch, name='Тестовая очередь')
 		payload = {
 			'queue_id': queue.id,
-			'client_id': self.client_obj.id,
+			'client': {
+				'phone': '+79990009911',
+				'name': 'Guest User',
+			},
 		}
 
 		response = self.client.post('/api/v1/tickets/join/', payload, format='json')
@@ -51,7 +54,10 @@ class QueueTicketApiTests(APITestCase):
 		queue = Queue.objects.create(branch=self.branch, name='Тестовая очередь')
 		payload = {
 			'queue_id': queue.id,
-			'client_id': self.client_obj.id,
+			'client': {
+				'phone': '+79990001122',
+				'name': 'Ivan',
+			},
 		}
 
 		first_response = self.client.post('/api/v1/tickets/join/', payload, format='json')
@@ -60,6 +66,18 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
 		self.assertIn('client', second_response.data)
+
+	def test_join_rejects_client_id_in_payload(self):
+		queue = Queue.objects.create(branch=self.branch, name='Тестовая очередь')
+		payload = {
+			'queue_id': queue.id,
+			'client_id': self.client_obj.id,
+		}
+
+		response = self.client.post('/api/v1/tickets/join/', payload, format='json')
+
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+		self.assertIn('client_id', response.data)
 
 	def test_join_endpoint_creates_client_and_ticket(self):
 		queue = Queue.objects.create(branch=self.branch, name='QR очередь')
@@ -79,6 +97,24 @@ class QueueTicketApiTests(APITestCase):
 		created_client = Client.objects.get(phone='+79990002233')
 		self.assertEqual(str(created_client.branch_id), str(self.branch.id))
 		self.assertEqual(response.data['client'], created_client.id)
+
+	def test_join_without_client_payload_creates_anonymous_clients(self):
+		queue = Queue.objects.create(branch=self.branch, name='Анонимная очередь')
+
+		first_response = self.client.post(
+			'/api/v1/tickets/join/',
+			{'queue_id': queue.id},
+			format='json',
+		)
+		second_response = self.client.post(
+			'/api/v1/tickets/join/',
+			{'queue_id': queue.id},
+			format='json',
+		)
+
+		self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+		self.assertNotEqual(first_response.data['client'], second_response.data['client'])
 
 	def test_queue_snapshot_endpoint_returns_waiting_and_current(self):
 		queue = Queue.objects.create(branch=self.branch, name='Табло')

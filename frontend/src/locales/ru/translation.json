@@ -1,0 +1,10 @@
+{
+  "client": {
+    "guestPage": {
+      "enterQueue": "Встать \nв очередь",
+      "queueCaption": "В очереди {{count}} человек",
+      "loading": "Загрузка...",
+      "errorJoinQueue": "Не удалось встать в очередь"
+    }
+  }
+}

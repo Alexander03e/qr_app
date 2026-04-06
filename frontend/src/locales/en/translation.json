@@ -1,0 +1,10 @@
+{
+  "client": {
+    "guestPage": {
+      "enterQueue": "Join queue",
+      "queueCaption": "{{count}} people in queue",
+      "loading": "Loading...",
+      "errorJoinQueue": "Failed to join queue"
+    }
+  }
+}

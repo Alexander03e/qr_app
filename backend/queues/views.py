@@ -113,7 +113,6 @@ class TicketViewSet(
 
         ticket = join_queue(
             queue_id=input_serializer.validated_data['queue_id'],
-            client_id=input_serializer.validated_data.get('client_id'),
             client_data=input_serializer.validated_data.get('client'),
         )
 

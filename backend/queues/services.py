@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
-from clients.services import get_client_by_id, get_or_create_client_by_identity
+from clients.services import get_or_create_client_by_identity
 from queues.models import Queue, QueueStatus, Ticket
 
 
@@ -64,19 +64,14 @@ def add_new_ticket(queue: Queue, client_id: int) -> Ticket:
         )
 
 
-def resolve_client(queue: Queue, client_id: int | None, client_data: dict | None):
-    if client_id:
-        client = get_client_by_id(client_id)
-    else:
-        client = get_or_create_client_by_identity(
-            client_data=client_data or {},
-            branch_id=str(queue.branch_id),
-        )
-
-    return client
+def resolve_client(queue: Queue, client_data: dict | None):
+    return get_or_create_client_by_identity(
+        client_data=client_data or {},
+        branch_id=str(queue.branch_id),
+    )
 
 
-def join_queue(queue_id: int, client_id: int | None = None, client_data: dict | None = None) -> Ticket:
+def join_queue(queue_id: int, client_data: dict | None = None) -> Ticket:
     with transaction.atomic():
         try:
             queue = Queue.objects.select_for_update().get(pk=queue_id)
@@ -86,7 +81,6 @@ def join_queue(queue_id: int, client_id: int | None = None, client_data: dict | 
 
         client = resolve_client(
             queue=queue,
-            client_id=client_id,
             client_data=client_data,
         )
 
