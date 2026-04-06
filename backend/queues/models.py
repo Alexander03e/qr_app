@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class QueueStatus(models.TextChoices):
@@ -11,8 +12,12 @@ class QueueStatus(models.TextChoices):
 
 class Queue(models.Model):
     last_ticket_number = models.PositiveIntegerField(default=0)
-    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='queries', verbose_name='Филиал')
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, null=True, related_name='queries', verbose_name='Филиал')
     name = models.CharField(max_length=255, verbose_name='Название очереди')
+    notification_options = models.JSONField(default=dict, null=True, blank=True, verbose_name='Настройки уведомлений')
+    clients_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Лимит клиентов в очереди')
+
+    queue_url = models.CharField(max_length=255, verbose_name='Ссылка на очередь', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -28,6 +33,7 @@ class Ticket(models.Model):
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, verbose_name='Клиент')
     status = models.CharField(max_length=20, choices=QueueStatus.choices, default=QueueStatus.WAITING, verbose_name='Статус')
     display_number = models.CharField(max_length=20, verbose_name='Показанный номер')
+    enqueued_at = models.DateTimeField(default=timezone.now, verbose_name='Время постановки в очередь')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата завершения')

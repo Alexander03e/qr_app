@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from queues.models import Queue, Ticket
+from queues.models import Queue, QueueStatus, Ticket
 
 
 class QueueSerializer(serializers.ModelSerializer):
@@ -11,7 +11,7 @@ class QueueSerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     queue_name = serializers.CharField(source='queue.name', read_only=True)
-
+    
     class Meta:
         model = Ticket
         fields = '__all__'
@@ -26,8 +26,6 @@ class JoinQueueClientSerializer(serializers.Serializer):
     consent_ad = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
-        if not attrs.get('phone') and not attrs.get('vk_id'):
-            raise serializers.ValidationError('Укажите phone или vk_id для создания клиента.')
         return attrs
 
 
@@ -37,10 +35,37 @@ class JoinQueueSerializer(serializers.Serializer):
     client = JoinQueueClientSerializer(required=False)
 
     def validate(self, attrs):
-        if not attrs.get('client_id') and not attrs.get('client'):
-            raise serializers.ValidationError(
-                {'client': ['Передайте client_id или объект client.']}
-            )
         return attrs
-        
+
+
+class TicketStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=QueueStatus.choices)
+
+
+class QueueTicketIdsSerializer(serializers.Serializer):
+    ticket_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+
+
+class QueueDeleteTicketsResultSerializer(serializers.Serializer):
+    queue_id = serializers.IntegerField()
+    deleted_count = serializers.IntegerField()
+    deleted_ticket_ids = serializers.ListField(child=serializers.IntegerField())
+
+
+class QueueBoardTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ('id', 'display_number', 'status', 'created_at', 'updated_at')
+
+
+class QueueSnapshotSerializer(serializers.Serializer):
+    queue_id = serializers.IntegerField()
+    queue_name = serializers.CharField()
+    waiting_count = serializers.IntegerField()
+    current_ticket = QueueBoardTicketSerializer(allow_null=True)
+    waiting_tickets = QueueBoardTicketSerializer(many=True)
+
 

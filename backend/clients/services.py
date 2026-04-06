@@ -14,9 +14,6 @@ def get_or_create_client_by_identity(client_data: dict, branch_id: str | None = 
     phone = client_data.get('phone')
     vk_id = client_data.get('vk_id')
 
-    if not phone and not vk_id:
-        raise ValidationError({'client': ['Укажите phone или vk_id для создания клиента.']})
-
     lookup = {'phone': phone} if phone else {'vk_id': vk_id}
     defaults = {
         'name': client_data.get('name'),
