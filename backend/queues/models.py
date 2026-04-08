@@ -8,6 +8,8 @@ class QueueStatus(models.TextChoices):
     SKIPPED = 'SKIPPED'  # пропущен
     COMPLETED = 'COMPLETED'  # завершен
     IN_SERVICE = 'IN_SERVICE'  # обслуживается
+    LEFT = 'LEFT'  # ушел
+    NOT_ARRIVED = 'NOT_ARRIVED'  # не пришел
 
 
 class Queue(models.Model):

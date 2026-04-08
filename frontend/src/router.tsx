@@ -1,7 +1,17 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { AdminApp, OperatorApp, ClientApp } from "@apps";
 import "@shared/assets/scss/index.scss";
 import { buildRouterPath, PATHS } from "@shared/consts";
+import { lazy } from "react";
+
+const ClientApp = lazy(() =>
+  import(`@apps/client`).then((module) => ({ default: module.ClientApp })),
+);
+const OperatorApp = lazy(() =>
+  import(`@apps/operator`).then((module) => ({ default: module.OperatorApp })),
+);
+const AdminApp = lazy(() =>
+  import(`@apps/admin`).then((module) => ({ default: module.AdminApp })),
+);
 
 export const AppRouter = () => {
   return (

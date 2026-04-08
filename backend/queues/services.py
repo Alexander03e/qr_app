@@ -4,14 +4,31 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
-from clients.services import get_or_create_client_by_identity
+from clients.models import Client
+from clients.services import get_client_by_id, get_or_create_client_by_identity
 from queues.models import Queue, QueueStatus, Ticket
 
 
 logger = logging.getLogger(__name__)
 
 
-def build_queue_snapshot(queue: Queue) -> dict:
+def resolve_client_from_identifier(client_id: str | None):
+    if not client_id:
+        return None
+
+    if client_id.isdigit():
+        try:
+            return get_client_by_id(client_id=int(client_id))
+        except NotFound:
+            return None
+
+    try:
+        return Client.objects.get(device_id=client_id)
+    except Client.DoesNotExist:
+        return None
+
+
+def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
     waiting_qs = queue.tickets.filter(status=QueueStatus.WAITING).order_by('enqueued_at', 'id')
     current_ticket = (
         queue.tickets
@@ -28,23 +45,54 @@ def build_queue_snapshot(queue: Queue) -> dict:
             .first()
         )
 
+    client_ticket = None
+    client_is_served = False
+    if client_id is not None:
+        client = resolve_client_from_identifier(client_id)
+        if client is None:
+            return {
+                'queue_id': queue.id,
+                'queue_name': queue.name,
+                'waiting_count': waiting_qs.count(),
+                'current_ticket': current_ticket,
+                'waiting_tickets': list(waiting_qs),
+                'client_ticket': None,
+                'client_is_served': False,
+            }
+        client_ticket = (
+            queue.tickets
+            .filter(
+                client_id=client.id,
+                status__in=[QueueStatus.WAITING, QueueStatus.CALLED, QueueStatus.IN_SERVICE],
+            )
+            .order_by('-created_at', '-id')
+            .first()
+        )
+        if client_ticket is None:
+            client_is_served = queue.tickets.filter(
+                client_id=client.id,
+                status=QueueStatus.COMPLETED,
+            ).exists()
+
     return {
         'queue_id': queue.id,
         'queue_name': queue.name,
         'waiting_count': waiting_qs.count(),
         'current_ticket': current_ticket,
         'waiting_tickets': list(waiting_qs),
+        'client_ticket': client_ticket,
+        'client_is_served': client_is_served,
     }
 
 
-def get_queue_snapshot(queue_id: int) -> dict:
+def get_queue_snapshot(queue_id: int, client_id: str | None = None) -> dict:
     try:
         queue = Queue.objects.get(pk=queue_id)
     except Queue.DoesNotExist as exc:
         logger.exception('Queue not found while building snapshot. queue_id=%s', queue_id)
         raise NotFound('Очередь не найдена.') from exc
 
-    return build_queue_snapshot(queue)
+    return build_queue_snapshot(queue=queue, client_id=client_id)
 
 def add_new_ticket(queue: Queue, client_id: int) -> Ticket:
     # 1. Атомарно увеличиваем счетчик в очереди и получаем обновленный объект
@@ -71,7 +119,28 @@ def resolve_client(queue: Queue, client_data: dict | None):
     )
 
 
-def join_queue(queue_id: int, client_data: dict | None = None) -> Ticket:
+def resolve_join_client(
+    queue: Queue,
+    client_id: str | None,
+    client_data: dict | None,
+):
+    if client_id is not None:
+        client = resolve_client_from_identifier(client_id)
+        if client is not None:
+            return client
+
+        payload = client_data.copy() if client_data else {}
+        payload['device_id'] = client_id
+        return resolve_client(queue=queue, client_data=payload)
+
+    return resolve_client(queue=queue, client_data=client_data)
+
+
+def join_queue(
+    queue_id: int,
+    client_id: str | None = None,
+    client_data: dict | None = None,
+) -> Ticket:
     with transaction.atomic():
         try:
             queue = Queue.objects.select_for_update().get(pk=queue_id)
@@ -79,10 +148,7 @@ def join_queue(queue_id: int, client_data: dict | None = None) -> Ticket:
             logger.exception('Queue not found while joining queue. queue_id=%s', queue_id)
             raise NotFound('Очередь не найдена.') from exc
 
-        client = resolve_client(
-            queue=queue,
-            client_data=client_data,
-        )
+        client = resolve_join_client(queue=queue, client_id=client_id, client_data=client_data)
 
         has_active_ticket = queue.tickets.filter(
             client_id=client.id,
@@ -106,8 +172,8 @@ def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
     new_status = QueueStatus(new_status)
 
     allowed_transitions: dict[QueueStatus, set[QueueStatus]] = {
-        QueueStatus.WAITING: {QueueStatus.CALLED, QueueStatus.SKIPPED},
-        QueueStatus.CALLED: {QueueStatus.WAITING, QueueStatus.IN_SERVICE, QueueStatus.SKIPPED},
+        QueueStatus.WAITING: {QueueStatus.CALLED, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED},
+        QueueStatus.CALLED: {QueueStatus.WAITING, QueueStatus.IN_SERVICE, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED},
         QueueStatus.IN_SERVICE: {QueueStatus.COMPLETED, QueueStatus.SKIPPED},
         QueueStatus.SKIPPED: set(),
         QueueStatus.COMPLETED: set(),

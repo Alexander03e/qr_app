@@ -1,6 +1,42 @@
 @use 'scss-reset/reset';
 @use 'root' as *;
 
+@font-face {
+	font-family: 'Geometria';
+	src: url('../fonts/Geometria-Light.woff2') format('woff2'),
+		 url('../fonts/Geometria-Light.woff') format('woff');
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Geometria';
+	src: url('../fonts/Geometria-Medium.woff2') format('woff2'),
+		 url('../fonts/Geometria-Medium.woff') format('woff');
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Geometria';
+	src: url('../fonts/Geometria-Bold.woff2') format('woff2'),
+		 url('../fonts/Geometria-Bold.woff') format('woff');
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Geometria';
+	src: url('../fonts/Geometria-ExtraBold.woff2') format('woff2'),
+		 url('../fonts/Geometria-ExtraBold.woff') format('woff');
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+}
+
 body {
-    background-color: gray;
+	font-family: var(--font-family-base);
 }

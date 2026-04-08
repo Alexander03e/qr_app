@@ -1,4 +1,3 @@
-import { Outlet } from "react-router-dom";
 import styles from "./Layout.module.scss";
 import type { ReactNode } from "react";
 
@@ -12,7 +11,6 @@ export const Layout = ({ topSlot, children }: IProps) => {
     <div className={styles.layout}>
       {topSlot}
       {children}
-      <Outlet />
     </div>
   );
 };

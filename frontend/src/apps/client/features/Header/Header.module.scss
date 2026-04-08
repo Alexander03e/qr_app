@@ -1,0 +1,9 @@
+.wrapper {
+    height: fit-content;
+    align-items: flex-start; 
+    gap: 4px;
+
+    svg {
+        color: var(--primary-color);
+    }
+}

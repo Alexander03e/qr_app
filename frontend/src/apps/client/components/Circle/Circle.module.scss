@@ -1,3 +1,15 @@
+.progress {
+    --circle-size: 300px;
+    width: var(--circle-size);
+    height: var(--circle-size);
+
+    & > div {
+        width: 100%!important;
+        height: 100%!important;
+        
+    }
+}
+
 .wrapper {
     --circle-size: 300px;
     min-width: 200px;

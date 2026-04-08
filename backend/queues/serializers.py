@@ -22,6 +22,7 @@ class JoinQueueClientSerializer(serializers.Serializer):
     vk_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     preferred_lang = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    device_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     send_notification = serializers.BooleanField(required=False, default=False)
     consent_ad = serializers.BooleanField(required=False, default=False)
 
@@ -31,6 +32,7 @@ class JoinQueueClientSerializer(serializers.Serializer):
 
 class JoinQueueSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
+    client_id = serializers.CharField(required=False)
     client = JoinQueueClientSerializer(required=False)
 
     def validate(self, attrs):
@@ -66,5 +68,7 @@ class QueueSnapshotSerializer(serializers.Serializer):
     waiting_count = serializers.IntegerField()
     current_ticket = QueueBoardTicketSerializer(allow_null=True)
     waiting_tickets = QueueBoardTicketSerializer(many=True)
+    client_ticket = TicketSerializer(allow_null=True)
+    client_is_served = serializers.BooleanField()
 
 

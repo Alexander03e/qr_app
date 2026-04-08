@@ -1,24 +1,28 @@
-import { Circle } from "@apps/client/components";
 import styles from "./GuestPage.module.scss";
-import { Typography } from "antd";
+import { Button, Typography } from "antd";
 import { useTranslation } from "react-i18next";
-import { useQueueStore, writeQueueSession } from "@apps/client/store";
+import { useQueueStore } from "@apps/client/store";
 import { useMutation } from "@tanstack/react-query";
 import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { useParams } from "react-router-dom";
+import { writeQueueSession, getOrCreateDeviceId } from "@apps/client/helpers";
+import { makeRequest } from "@shared/helper/handler";
 
 export const GuestPage = () => {
   const { t } = useTranslation();
-  const { queueData, setTicket, setIsInQueue, setQueueId } = useQueueStore();
+  const {
+    clientId,
+    queueData,
+    setTicket,
+    setClientId,
+    setIsInQueue,
+    setQueueId,
+  } = useQueueStore();
   const { queueId } = useParams();
 
   const queueCount = queueData?.waiting_count;
 
-  const {
-    mutate: joinQueue,
-    isPending,
-    isError,
-  } = useMutation(
+  const { mutateAsync: joinQueue, isPending } = useMutation(
     queueMutationOptions.joinQueue({
       onSuccess: (ticket) => {
         if (!queueId) {
@@ -26,10 +30,16 @@ export const GuestPage = () => {
         }
 
         const parsedQueueId = Number(queueId);
+        const deviceId = getOrCreateDeviceId();
+        const resolvedClientId = clientId ?? deviceId;
+
+        setClientId(resolvedClientId);
         setQueueId(parsedQueueId);
         setTicket(ticket);
         setIsInQueue(true);
         writeQueueSession({
+          clientId: resolvedClientId,
+          deviceId,
           queueId: parsedQueueId,
           ticketId: ticket.id,
         });
@@ -42,31 +52,26 @@ export const GuestPage = () => {
       return;
     }
 
-    joinQueue({
-      queue_id: Number(queueId),
-    });
+    makeRequest(
+      joinQueue({
+        queue_id: Number(queueId),
+        client_id: clientId ?? getOrCreateDeviceId(),
+        client: {
+          device_id: getOrCreateDeviceId(),
+        },
+      }),
+    );
   };
 
   return (
     <div className={styles.wrapper}>
       <div className={styles.bottom}>
-        <Circle
-          variant="filled"
-          title={
-            isPending
-              ? t("client.guestPage.loading")
-              : t("client.guestPage.enterQueue")
-          }
-          onClick={handleEnterQueue}
-        />
-        <Typography.Title level={4}>
+        <Typography.Title className={styles.caption} level={3}>
           {t("client.guestPage.queueCaption", { count: queueCount })}
         </Typography.Title>
-        {isError ? (
-          <Typography.Text type="danger">
-            {t("client.guestPage.errorJoinQueue")}
-          </Typography.Text>
-        ) : null}
+        <Button loading={isPending} onClick={handleEnterQueue} type="primary">
+          {t("client.guestPage.enterQueue")}
+        </Button>
       </div>
     </div>
   );

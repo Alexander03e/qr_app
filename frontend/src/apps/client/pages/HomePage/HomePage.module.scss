@@ -1,0 +1,38 @@
+.top {
+    height: 100%;
+    flex: 1;
+    gap: 12px;
+    align-items: center;
+
+    display: flex;
+    flex-direction: column;
+
+    .circleContent {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .title {
+        align-items: center;
+        margin-top: 20px;
+        text-transform: lowercase;
+        font-size: 40px;
+        text-align: center;
+        line-height: 1;
+        font-weight: bold;
+        white-space: pre-line;
+    }
+}
+
+.bottom {
+    max-width: 300px;
+    margin-inline: auto;
+    // background: var(--primary-color-mask-10);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+}

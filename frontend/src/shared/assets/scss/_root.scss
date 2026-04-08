@@ -1,4 +1,9 @@
 :root {
+    --font-family-base: "Geometria", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
     --primary-color: #3D81FF;
     --success-color: #52C41A;
+
+    --primary-color-mask-10: rgb(61, 129, 255, 0.1);
+    --success-color-mask-10: rgb(82, 196, 26, 0.1);
 }

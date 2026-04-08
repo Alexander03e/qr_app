@@ -11,10 +11,10 @@ import type {
     QueueSnapshotResponse,
     QueueTicketListRequest,
     TicketItemResponse,
-    TicketStatus,
     TicketStatusUpdateResponse,
     UpdateQueueRequest,
 } from "@shared/entities/queue/types";
+import type { TicketStatus } from "../types/enum";
 
 class QueuesApi {
     async getQueues(params?: QueueListRequest): Promise<QueueItemResponse[]> {
@@ -37,8 +37,10 @@ class QueuesApi {
         await $api.delete(`/queues/${queueId}/`);
     }
 
-    async getQueueSnapshot(queueId: number | string): Promise<QueueSnapshotResponse> {
-        return (await $api.get(`/queues/${queueId}/snapshot/`)).data;
+    async getQueueSnapshot(queueId: number | string, clientId?: string): Promise<QueueSnapshotResponse> {
+        return (await $api.get(`/queues/${queueId}/snapshot/`, {
+            params: clientId ? { client_id: clientId } : undefined,
+        })).data;
     }
 
     async inviteNext(queueId: number): Promise<InviteNextResponse> {

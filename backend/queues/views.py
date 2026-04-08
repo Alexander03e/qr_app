@@ -30,7 +30,8 @@ class QueueViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='snapshot')
     def snapshot(self, request, pk=None):
-        snapshot = get_queue_snapshot(queue_id=pk)
+        client_id = request.query_params.get('client_id')
+        snapshot = get_queue_snapshot(queue_id=pk, client_id=client_id)
         output_serializer = QueueSnapshotSerializer(snapshot)
         return Response(output_serializer.data, status=drf_status.HTTP_200_OK)
 
@@ -113,6 +114,7 @@ class TicketViewSet(
 
         ticket = join_queue(
             queue_id=input_serializer.validated_data['queue_id'],
+            client_id=input_serializer.validated_data.get('client_id'),
             client_data=input_serializer.validated_data.get('client'),
         )
 

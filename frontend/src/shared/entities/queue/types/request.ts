@@ -16,6 +16,7 @@ export type UpdateQueueRequest = Partial<CreateQueueRequest>;
 export interface QueueJoinClientRequest {
   name?: string | null;
   vk_id?: string | null;
+  device_id?: string | null;
   preferred_lang?: string | null;
   phone?: string | null;
   send_notification?: boolean;
@@ -24,7 +25,7 @@ export interface QueueJoinClientRequest {
 
 export interface JoinQueueRequest {
   queue_id: number;
-  client_id?: number;
+  client_id?: string;
   client?: QueueJoinClientRequest;
 }
 
@@ -36,4 +37,3 @@ export interface QueueTicketListRequest {
   queue?: number;
 }
 
-export type TicketStatus = "WAITING" | "CALLED" | "SKIPPED" | "COMPLETED" | "IN_SERVICE";

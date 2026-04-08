@@ -21,6 +21,7 @@ class QueueTicketApiTests(APITestCase):
 		self.client_obj = Client.objects.create(
 			name='Ivan',
 			phone='+79990001122',
+			device_id='dev-test-001',
 			branch_id=str(self.branch.id),
 		)
 
@@ -65,19 +66,20 @@ class QueueTicketApiTests(APITestCase):
 
 		self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
-		self.assertIn('client', second_response.data)
+		self.assertIn('message', second_response.data)
+		self.assertIn('timestamp', second_response.data)
 
-	def test_join_rejects_client_id_in_payload(self):
+	def test_join_accepts_client_id_in_payload(self):
 		queue = Queue.objects.create(branch=self.branch, name='Тестовая очередь')
 		payload = {
 			'queue_id': queue.id,
-			'client_id': self.client_obj.id,
+			'client_id': self.client_obj.device_id,
 		}
 
 		response = self.client.post('/api/v1/tickets/join/', payload, format='json')
 
-		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-		self.assertIn('client_id', response.data)
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(response.data['client'], self.client_obj.id)
 
 	def test_join_endpoint_creates_client_and_ticket(self):
 		queue = Queue.objects.create(branch=self.branch, name='QR очередь')
@@ -144,6 +146,46 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.data['waiting_count'], 1)
 		self.assertEqual(response.data['current_ticket']['id'], t2.id)
 		self.assertEqual(response.data['waiting_tickets'][0]['id'], t1.id)
+		self.assertIsNone(response.data['client_ticket'])
+		self.assertFalse(response.data['client_is_served'])
+
+	def test_queue_snapshot_contains_client_ticket_for_client_id(self):
+		queue = Queue.objects.create(branch=self.branch, name='Личный статус')
+		ticket = Ticket.objects.create(
+			queue=queue,
+			client=self.client_obj,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0901',
+		)
+
+		response = self.client.get(
+			f'/api/v1/queues/{queue.id}/snapshot/',
+			{'client_id': self.client_obj.device_id},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['client_ticket']['id'], ticket.id)
+		self.assertFalse(response.data['client_is_served'])
+
+	def test_queue_snapshot_marks_client_as_served(self):
+		queue = Queue.objects.create(branch=self.branch, name='История клиента')
+		Ticket.objects.create(
+			queue=queue,
+			client=self.client_obj,
+			status=QueueStatus.COMPLETED,
+			display_number='Q1-0902',
+		)
+
+		response = self.client.get(
+			f'/api/v1/queues/{queue.id}/snapshot/',
+			{'client_id': self.client_obj.device_id},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIsNone(response.data['client_ticket'])
+		self.assertTrue(response.data['client_is_served'])
 
 	def test_status_update_returns_ticket_and_snapshot(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 1')

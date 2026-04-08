@@ -1,5 +1,21 @@
 {
   "client": {
+    "homePage": {
+      "waitingAhead_one": "Перед вами \n{{count}} человек",
+      "waitingAhead_few": "Перед вами \n{{count}} человека",
+      "waitingAhead_many": "Перед вами \n{{count}} человек",
+      "waitingAhead_other": "Перед вами \n{{count}} человека",
+      "youAreNext": "вы - \nследующий",
+      "skipOneAhead": "Пропустить одного вперед",
+      "yourTicket": "Ваша \nочередь!",
+      "leaveQueue": "Выйти из очереди",
+      "leaveQueueError": "Не удалось выйти из очереди"
+    },
+    "leftPage": {
+      "title": "Вы покинули очередь",
+      "description": "Но вы можете занять место еще раз, для этого нажмите кнопку ниже",
+      "returnButton": "Вернуться в очередь"
+    },
     "guestPage": {
       "enterQueue": "Встать \nв очередь",
       "queueCaption": "В очереди {{count}} человек",

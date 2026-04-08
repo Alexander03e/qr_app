@@ -1,0 +1,14 @@
+.label {
+    padding: 12px 18px;
+    background: var(--primary-color-mask-10);
+    color: var(--primary-color);
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    width: fit-content;
+
+    &.success {
+        background: var(--success-color-mask-10);
+        color: var(--success-color);
+    }
+}

@@ -10,6 +10,7 @@ class Client(models.Model):
     branch_id = models.CharField(max_length=255, verbose_name='ID филиала', null=True, blank=True) #TODO: потом поменять на ForeignKey
     send_notification = models.BooleanField(default=False, verbose_name='Отправлять уведомления')
     consent_ad = models.BooleanField(default=False, verbose_name='Отправлять рекламу')
+    device_id = models.CharField(max_length=255, verbose_name='ID устройства', null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     served_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата обслуживания')

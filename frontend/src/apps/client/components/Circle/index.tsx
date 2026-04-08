@@ -1,27 +1,56 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import styles from "./Circle.module.scss";
 import cn from "classnames";
-import { Typography } from "antd";
+import { Progress, Typography } from "antd";
 
 interface IProps {
   title?: string;
-  content?: ReactNode;
+  children?: ReactNode;
   variant?: "filled" | "outlined";
   onClick?: () => void;
+  className?: string;
+  contentClassName?: string;
+  isProgress?: boolean;
+  progressProps?: ComponentProps<typeof Progress>;
+  color?: "default" | "success";
 }
 
 export const Circle = ({
-  content,
+  children,
   title,
   variant = "outlined",
+  contentClassName,
+  className,
+  isProgress = true,
+  progressProps,
   onClick,
+  color = "default",
 }: IProps) => {
   const isInteractive = typeof onClick === "function";
 
+  if (isProgress) {
+    const strokeColor =
+      (progressProps?.strokeColor ?? color === "success")
+        ? "var(--success-color)"
+        : "var(--primary-color)";
+    return (
+      <Progress
+        {...progressProps}
+        strokeColor={strokeColor}
+        className={cn(styles.progress, progressProps?.className, className)}
+        type="circle"
+        format={() => (
+          <div className={cn(styles.content, contentClassName)}>{children}</div>
+        )}
+      />
+    );
+  }
+
   return (
     <div
-      className={cn(styles.wrapper, styles[variant], {
+      className={cn(styles.wrapper, className, styles[variant], {
         [styles.interactive]: isInteractive,
+        [styles.isProgress]: isProgress,
       })}
       onClick={onClick}
       onKeyDown={(event) => {
@@ -42,7 +71,9 @@ export const Circle = ({
           {title}
         </Typography.Title>
       )}
-      {content && <div className={styles.content}>{content}</div>}
+      {children && (
+        <div className={cn(styles.content, contentClassName)}>{children}</div>
+      )}
     </div>
   );
 };

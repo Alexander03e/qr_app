@@ -1,4 +1,5 @@
-import type { TicketStatus } from "./request";
+import type { TicketStatus } from "./enum";
+
 
 export interface QueueItemResponse {
   id: number;
@@ -39,6 +40,8 @@ export interface QueueSnapshotResponse {
   waiting_count: number;
   current_ticket: QueueBoardTicketResponse | null;
   waiting_tickets: QueueBoardTicketResponse[];
+  client_ticket: TicketItemResponse | null;
+  client_is_served: boolean;
 }
 
 export interface InviteNextResponse {
