@@ -8,6 +8,7 @@ interface QueueStoreState {
   clientId: string | null;
   queueId: number | null;
   isServed: boolean;
+  isNotArrived: boolean;
   queueData: QueueSnapshotResponse | null;
   ticket: TicketItemResponse | null;
   isInQueue: boolean;
@@ -18,6 +19,7 @@ interface QueueStoreState {
   setIsInQueue: (isInQueue: boolean) => void;
   resetQueueState: () => void;
   setIsServed: (isServed: boolean) => void;
+  setIsNotArrived: (isNotArrived: boolean) => void;
 }
 
 const initialState = {
@@ -27,6 +29,7 @@ const initialState = {
   ticket: null,
   isInQueue: false,
   isServed: false,
+  isNotArrived: false,
 };
 
 export const useQueueStore = create<QueueStoreState>()((set) => ({
@@ -38,4 +41,5 @@ export const useQueueStore = create<QueueStoreState>()((set) => ({
   setIsInQueue: (isInQueue) => set({ isInQueue }),
   resetQueueState: () => set(initialState),
   setIsServed: (isServed) => set({ isServed }),
+  setIsNotArrived: (isNotArrived) => set({ isNotArrived }),
 }));

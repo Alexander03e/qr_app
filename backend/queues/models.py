@@ -10,6 +10,7 @@ class QueueStatus(models.TextChoices):
     IN_SERVICE = 'IN_SERVICE'  # обслуживается
     LEFT = 'LEFT'  # ушел
     NOT_ARRIVED = 'NOT_ARRIVED'  # не пришел
+    REMOVED = 'REMOVED'  # удален оператором
 
 
 class Queue(models.Model):
@@ -35,6 +36,7 @@ class Ticket(models.Model):
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, verbose_name='Клиент')
     status = models.CharField(max_length=20, choices=QueueStatus.choices, default=QueueStatus.WAITING, verbose_name='Статус')
     display_number = models.CharField(max_length=20, verbose_name='Показанный номер')
+    initial_ticket_number = models.PositiveIntegerField(null=True, blank=True, verbose_name='Изначальный номер в очереди')
     enqueued_at = models.DateTimeField(default=timezone.now, verbose_name='Время постановки в очередь')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')

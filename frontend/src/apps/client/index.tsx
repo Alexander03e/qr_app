@@ -6,6 +6,7 @@ import { useQueueStore } from "./store/queueStore";
 import { Outlet, Route, Routes } from "react-router-dom";
 import { LoadingOutlined } from "@ant-design/icons";
 import { LeftPage } from "./pages/LeftPage";
+import { MissedPage } from "./pages/MissedPage";
 import { Spin } from "antd";
 import { ClientAuthProvider } from "./features/ClientAuthProvider";
 import { useAppStore } from "./store/appStore";
@@ -44,6 +45,7 @@ export const ClientApp = () => {
       >
         <Route element={<ClientAppInner />} index />
         <Route path="left" element={<LeftPage />} />
+        <Route path="missed" element={<MissedPage />} />
       </Route>
     </Routes>
   );

@@ -1,10 +1,166 @@
 {
   "client": {
+    "removedModal": {
+      "title": "You were removed from queue",
+      "description": "Operator removed your ticket. You can join queue again.",
+      "ok": "OK"
+    },
+    "homePage": {
+      "waitingAhead_one": "{{count}} person ahead",
+      "waitingAhead_few": "{{count}} people ahead",
+      "waitingAhead_many": "{{count}} people ahead",
+      "waitingAhead_other": "{{count}} people ahead",
+      "youAreNext": "you are next",
+      "skipOneAhead": "Let one person ahead",
+      "yourTicket": "your turn",
+      "timeLeft": "Time left: {{time}}",
+      "leaveQueue": "Leave queue",
+      "leaveQueueError": "Failed to leave queue"
+    },
     "guestPage": {
       "enterQueue": "Join queue",
       "queueCaption": "{{count}} people in queue",
       "loading": "Loading...",
       "errorJoinQueue": "Failed to join queue"
+    },
+    "leftPage": {
+      "title": "You left the queue",
+      "description": "You can join once again using the button below",
+      "returnButton": "Rejoin queue"
+    },
+    "missedPage": {
+      "title": "You did not arrive in time",
+      "description": "Call timer is over, your ticket was removed from queue. You can join again.",
+      "returnButton": "Rejoin queue"
+    }
+  },
+  "operator": {
+    "login": {
+      "title": "Operator sign in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "invalid": "Invalid credentials"
+    },
+    "tickets": {
+      "invite": "Invite",
+      "remove": "Remove",
+      "needActionTitle": "Current ticket exists",
+      "needActionDescription": "Choose action for current ticket before calling selected one",
+      "complete": "Mark as completed",
+      "return": "Return to queue"
+    }
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "login": {
+      "title": "Admin sign in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "invalid": "Invalid credentials"
+    },
+    "menu": {
+      "companies": "Companies",
+      "branches": "Branches",
+      "queues": "Queues",
+      "operators": "Operators",
+      "feedback": "Complaints and feedback",
+      "metrics": "Metrics",
+      "settings": "Settings"
+    },
+    "stats": {
+      "companies": "Companies",
+      "branches": "Branches",
+      "queues": "Queues",
+      "operators": "Operators",
+      "feedback": "Requests"
+    },
+    "common": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "logout": "Sign out",
+      "actions": "Actions",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this record?",
+      "unknownCompany": "Unknown company"
+    },
+    "companies": {
+      "add": "Add company",
+      "name": "Name",
+      "timezone": "Timezone"
+    },
+    "branches": {
+      "add": "Add branch",
+      "company": "Company",
+      "name": "Name",
+      "address": "Address",
+      "status": "Status"
+    },
+    "queues": {
+      "add": "Add queue",
+      "edit": "Edit queue",
+      "details": "Queue details",
+      "name": "Name",
+      "branch": "Branch",
+      "limit": "Clients limit",
+      "url": "Queue URL",
+      "assignedOperators": "Queue operators",
+      "selectOperator": "Select operator",
+      "assign": "Assign to queue",
+      "unassign": "Remove from queue",
+      "lastTicket": "Last ticket number",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at"
+    },
+    "operators": {
+      "add": "Add operator",
+      "edit": "Edit operator",
+      "fullname": "Full name",
+      "email": "Email",
+      "password": "Password",
+      "branch": "Branch",
+      "status": "Status"
+    },
+    "feedback": {
+      "add": "Add request",
+      "edit": "Edit request",
+      "type": "Type",
+      "status": "Status",
+      "title": "Title",
+      "message": "Message",
+      "branch": "Branch",
+      "queue": "Queue"
+    },
+    "metrics": {
+      "totalRequests": "Total requests",
+      "errorRequests": "Error requests",
+      "avgLatency": "Average latency",
+      "method": "Method",
+      "endpoint": "Endpoint",
+      "requests": "Requests"
+    },
+    "settings": {
+      "companyTitle": "Company settings",
+      "adminTitle": "Admin profile",
+      "newPassword": "New password",
+      "saveCompany": "Save company",
+      "saveAdmin": "Save admin profile"
+    },
+    "messages": {
+      "companyCreated": "Company created",
+      "companyUpdated": "Company updated",
+      "branchCreated": "Branch created",
+      "queueCreated": "Queue created",
+      "operatorCreated": "Operator created",
+      "operatorUpdated": "Operator updated",
+      "operatorDeleted": "Operator deleted",
+      "queueUpdated": "Queue updated",
+      "queueDeleted": "Queue deleted",
+      "feedbackCreated": "Request created",
+      "feedbackUpdated": "Request updated",
+      "feedbackDeleted": "Request deleted",
+      "adminUpdated": "Admin profile updated"
     }
   }
 }

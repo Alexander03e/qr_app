@@ -23,6 +23,7 @@ class JoinQueueClientSerializer(serializers.Serializer):
     preferred_lang = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     device_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    queue_token = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     send_notification = serializers.BooleanField(required=False, default=False)
     consent_ad = serializers.BooleanField(required=False, default=False)
 
@@ -33,6 +34,7 @@ class JoinQueueClientSerializer(serializers.Serializer):
 class JoinQueueSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
     client_id = serializers.CharField(required=False)
+    queue_token = serializers.CharField(required=False)
     client = JoinQueueClientSerializer(required=False)
 
     def validate(self, attrs):
@@ -70,5 +72,19 @@ class QueueSnapshotSerializer(serializers.Serializer):
     waiting_tickets = QueueBoardTicketSerializer(many=True)
     client_ticket = TicketSerializer(allow_null=True)
     client_is_served = serializers.BooleanField()
+    client_is_removed = serializers.BooleanField()
+    client_is_not_arrived = serializers.BooleanField()
+    client_called_remaining_seconds = serializers.IntegerField(allow_null=True)
+    called_ticket_timeout_seconds = serializers.IntegerField()
+
+
+class InviteTicketByIdSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=['complete', 'return'], required=False)
+
+
+class AdminQueueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Queue
+        fields = '__all__'
 
 

@@ -6,7 +6,11 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { paths } from "@apps/client/helpers/paths";
 import { useMemo } from "react";
-import { writeQueueSession, getOrCreateDeviceId } from "@apps/client/helpers";
+import {
+  writeQueueSession,
+  getOrCreateDeviceId,
+  getOrCreateQueueToken,
+} from "@apps/client/helpers";
 import { makeRequest } from "../../../../shared/helper/handler";
 
 export const LeftPage = () => {
@@ -17,7 +21,8 @@ export const LeftPage = () => {
     useQueueStore();
 
   const deviceId = useMemo(() => getOrCreateDeviceId(), []);
-  const resolvedClientId = clientId || deviceId;
+  const queueToken = useMemo(() => getOrCreateQueueToken(), []);
+  const resolvedClientId = clientId || queueToken;
 
   const { mutateAsync: joinQueue, isPending } = useMutation(
     queueMutationOptions.joinQueue({
@@ -35,6 +40,7 @@ export const LeftPage = () => {
         writeQueueSession({
           clientId: resolvedClientId,
           deviceId,
+          queueToken,
           queueId: parsedQueueId,
           ticketId: ticket.id,
         });
@@ -49,6 +55,11 @@ export const LeftPage = () => {
       joinQueue({
         queue_id: Number(queueId),
         client_id: resolvedClientId,
+        queue_token: queueToken,
+        client: {
+          device_id: deviceId,
+          queue_token: queueToken,
+        },
       }),
     );
   };

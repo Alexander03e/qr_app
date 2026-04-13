@@ -4,7 +4,10 @@ import { Button, Typography } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { TICKET_STATUS } from "@shared/entities/queue/types/enum";
+import { operatorAuth } from "@apps/operator/helpers/auth";
+import { useNavigate } from "react-router-dom";
 export const Controls = () => {
+  const navigate = useNavigate();
   const { queueData, queueId, setQueue } = useOperatorQueue();
 
   const { mutate: inviteNext } = useMutation(
@@ -38,6 +41,15 @@ export const Controls = () => {
     });
   };
 
+  const handleLogout = async () => {
+    try {
+      await operatorAuth.logout();
+    } finally {
+      operatorAuth.clearToken();
+      navigate("/o/login", { replace: true });
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.top}>
@@ -57,6 +69,9 @@ export const Controls = () => {
       <div className={styles.controls}>
         <Button onClick={handleReturnToQueue}>Вернуть в очередь</Button>
         <Button onClick={handleNext}>Следующий</Button>
+        <Button danger onClick={handleLogout}>
+          Выйти
+        </Button>
       </div>
     </div>
   );

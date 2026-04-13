@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -10,6 +11,20 @@ from queues.models import Queue, QueueStatus, Ticket
 
 
 logger = logging.getLogger(__name__)
+CALLED_TICKET_TIMEOUT_SECONDS = 5 * 60
+
+
+def expire_called_tickets(queue: Queue) -> None:
+    threshold = timezone.now() - timedelta(seconds=CALLED_TICKET_TIMEOUT_SECONDS)
+    expired_tickets = queue.tickets.filter(
+        status=QueueStatus.CALLED,
+        updated_at__lte=threshold,
+    )
+
+    for ticket in expired_tickets:
+        ticket.status = QueueStatus.NOT_ARRIVED
+        ticket.finished_at = timezone.now()
+        ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
 
 
 def resolve_client_from_identifier(client_id: str | None):
@@ -25,10 +40,15 @@ def resolve_client_from_identifier(client_id: str | None):
     try:
         return Client.objects.get(device_id=client_id)
     except Client.DoesNotExist:
-        return None
+        try:
+            return Client.objects.get(queue_token=client_id)
+        except Client.DoesNotExist:
+            return None
 
 
 def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
+    expire_called_tickets(queue)
+
     waiting_qs = queue.tickets.filter(status=QueueStatus.WAITING).order_by('enqueued_at', 'id')
     current_ticket = (
         queue.tickets
@@ -47,6 +67,9 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
 
     client_ticket = None
     client_is_served = False
+    client_is_removed = False
+    client_is_not_arrived = False
+    client_called_remaining_seconds = None
     if client_id is not None:
         client = resolve_client_from_identifier(client_id)
         if client is None:
@@ -58,6 +81,10 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
                 'waiting_tickets': list(waiting_qs),
                 'client_ticket': None,
                 'client_is_served': False,
+                'client_is_removed': False,
+                'client_is_not_arrived': False,
+                'client_called_remaining_seconds': None,
+                'called_ticket_timeout_seconds': CALLED_TICKET_TIMEOUT_SECONDS,
             }
         client_ticket = (
             queue.tickets
@@ -69,10 +96,28 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
             .first()
         )
         if client_ticket is None:
-            client_is_served = queue.tickets.filter(
-                client_id=client.id,
-                status=QueueStatus.COMPLETED,
-            ).exists()
+            latest_finished_ticket = (
+                queue.tickets
+                .filter(
+                    client_id=client.id,
+                    status__in=[
+                        QueueStatus.COMPLETED,
+                        QueueStatus.LEFT,
+                        QueueStatus.NOT_ARRIVED,
+                        QueueStatus.REMOVED,
+                        QueueStatus.SKIPPED,
+                    ],
+                )
+                .order_by('-updated_at', '-id')
+                .first()
+            )
+            if latest_finished_ticket is not None:
+                client_is_served = latest_finished_ticket.status == QueueStatus.COMPLETED
+                client_is_removed = latest_finished_ticket.status == QueueStatus.REMOVED
+                client_is_not_arrived = latest_finished_ticket.status == QueueStatus.NOT_ARRIVED
+        elif client_ticket.status == QueueStatus.CALLED:
+            elapsed_seconds = int((timezone.now() - client_ticket.updated_at).total_seconds())
+            client_called_remaining_seconds = max(CALLED_TICKET_TIMEOUT_SECONDS - elapsed_seconds, 0)
 
     return {
         'queue_id': queue.id,
@@ -82,6 +127,10 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
         'waiting_tickets': list(waiting_qs),
         'client_ticket': client_ticket,
         'client_is_served': client_is_served,
+        'client_is_removed': client_is_removed,
+        'client_is_not_arrived': client_is_not_arrived,
+        'client_called_remaining_seconds': client_called_remaining_seconds,
+        'called_ticket_timeout_seconds': CALLED_TICKET_TIMEOUT_SECONDS,
     }
 
 
@@ -94,7 +143,7 @@ def get_queue_snapshot(queue_id: int, client_id: str | None = None) -> dict:
 
     return build_queue_snapshot(queue=queue, client_id=client_id)
 
-def add_new_ticket(queue: Queue, client_id: int) -> Ticket:
+def add_new_ticket(queue: Queue, client_id: int, initial_ticket_number: int) -> Ticket:
     # 1. Атомарно увеличиваем счетчик в очереди и получаем обновленный объект
     with transaction.atomic():
         queue = Queue.objects.select_for_update().get(pk=queue.pk)
@@ -108,6 +157,7 @@ def add_new_ticket(queue: Queue, client_id: int) -> Ticket:
             queue=queue,
             display_number=display_number,
             client_id=client_id,
+            initial_ticket_number=initial_ticket_number,
             status=QueueStatus.WAITING
         )
 
@@ -122,8 +172,14 @@ def resolve_client(queue: Queue, client_data: dict | None):
 def resolve_join_client(
     queue: Queue,
     client_id: str | None,
+    queue_token: str | None,
     client_data: dict | None,
 ):
+    if queue_token is not None:
+        payload = client_data.copy() if client_data else {}
+        payload['queue_token'] = queue_token
+        return resolve_client(queue=queue, client_data=payload)
+
     if client_id is not None:
         client = resolve_client_from_identifier(client_id)
         if client is not None:
@@ -139,6 +195,7 @@ def resolve_join_client(
 def join_queue(
     queue_id: int,
     client_id: str | None = None,
+    queue_token: str | None = None,
     client_data: dict | None = None,
 ) -> Ticket:
     with transaction.atomic():
@@ -148,7 +205,12 @@ def join_queue(
             logger.exception('Queue not found while joining queue. queue_id=%s', queue_id)
             raise NotFound('Очередь не найдена.') from exc
 
-        client = resolve_join_client(queue=queue, client_id=client_id, client_data=client_data)
+        client = resolve_join_client(
+            queue=queue,
+            client_id=client_id,
+            queue_token=queue_token,
+            client_data=client_data,
+        )
 
         has_active_ticket = queue.tickets.filter(
             client_id=client.id,
@@ -166,17 +228,26 @@ def join_queue(
                 }
             )
 
-        return add_new_ticket(queue=queue, client_id=client.id)
+        initial_ticket_number = queue.tickets.filter(status=QueueStatus.WAITING).count() + 1
+
+        return add_new_ticket(
+            queue=queue,
+            client_id=client.id,
+            initial_ticket_number=initial_ticket_number,
+        )
 
 def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
     new_status = QueueStatus(new_status)
 
     allowed_transitions: dict[QueueStatus, set[QueueStatus]] = {
-        QueueStatus.WAITING: {QueueStatus.CALLED, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED},
-        QueueStatus.CALLED: {QueueStatus.WAITING, QueueStatus.IN_SERVICE, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED},
-        QueueStatus.IN_SERVICE: {QueueStatus.COMPLETED, QueueStatus.SKIPPED},
+        QueueStatus.WAITING: {QueueStatus.CALLED, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED, QueueStatus.REMOVED},
+        QueueStatus.CALLED: {QueueStatus.WAITING, QueueStatus.IN_SERVICE, QueueStatus.SKIPPED, QueueStatus.LEFT, QueueStatus.NOT_ARRIVED, QueueStatus.REMOVED},
+        QueueStatus.IN_SERVICE: {QueueStatus.COMPLETED, QueueStatus.SKIPPED, QueueStatus.REMOVED},
         QueueStatus.SKIPPED: set(),
         QueueStatus.COMPLETED: set(),
+        QueueStatus.LEFT: set(),
+        QueueStatus.NOT_ARRIVED: set(),
+        QueueStatus.REMOVED: set(),
     }
 
     with transaction.atomic():
@@ -205,11 +276,17 @@ def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
                 }
             )
 
-        update_fields = ['status']
+        update_fields = ['status', 'updated_at']
         ticket.status = new_status
 
         # Для завершения обслуживания или выхода/удаления фиксируем момент окончания.
-        if new_status in {QueueStatus.COMPLETED, QueueStatus.SKIPPED}:
+        if new_status in {
+            QueueStatus.COMPLETED,
+            QueueStatus.SKIPPED,
+            QueueStatus.LEFT,
+            QueueStatus.NOT_ARRIVED,
+            QueueStatus.REMOVED,
+        }:
             ticket.finished_at = timezone.now()
             update_fields.append('finished_at')
         else:
@@ -239,7 +316,7 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
         if current_in_service_ticket is not None:
             current_in_service_ticket.status = QueueStatus.COMPLETED
             current_in_service_ticket.finished_at = timezone.now()
-            current_in_service_ticket.save(update_fields=['status', 'finished_at'])
+            current_in_service_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
 
         # Если ранее вызванный талон не перевели в обслуживание, считаем его пропущенным.
         current_called_ticket = (
@@ -251,7 +328,7 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
         if current_called_ticket is not None:
             current_called_ticket.status = QueueStatus.SKIPPED
             current_called_ticket.finished_at = timezone.now()
-            current_called_ticket.save(update_fields=['status', 'finished_at'])
+            current_called_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
 
         next_ticket = (
             queue.tickets
@@ -262,7 +339,7 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
 
         if next_ticket is not None:
             next_ticket.status = QueueStatus.CALLED
-            next_ticket.save(update_fields=['status'])
+            next_ticket.save(update_fields=['status', 'updated_at'])
 
         return next_ticket
 
@@ -293,8 +370,101 @@ def append_to_queue(ticket_id: int) -> Ticket:
         ticket.status = QueueStatus.WAITING
         ticket.finished_at = None
         ticket.enqueued_at = timezone.now()
-        ticket.save(update_fields=['status', 'finished_at', 'enqueued_at'])
+        ticket.save(update_fields=['status', 'finished_at', 'enqueued_at', 'updated_at'])
         return ticket
+
+
+def skip_one_ahead(ticket_id: int) -> Ticket:
+    with transaction.atomic():
+        try:
+            ticket = Ticket.objects.select_related('queue', 'client').select_for_update().get(pk=ticket_id)
+        except Ticket.DoesNotExist as exc:
+            logger.exception('Ticket not found while skipping one ahead. ticket_id=%s', ticket_id)
+            raise NotFound('Талон не найден.') from exc
+
+        if ticket.status == QueueStatus.CALLED:
+            ticket.status = QueueStatus.WAITING
+            ticket.finished_at = None
+            ticket.enqueued_at = timezone.now()
+            ticket.save(update_fields=['status', 'finished_at', 'enqueued_at', 'updated_at'])
+            return ticket
+
+        if ticket.status != QueueStatus.WAITING:
+            raise ValidationError({'status': ['Пропустить одного вперед можно только в статусах WAITING или CALLED.']})
+
+        waiting_ids = list(
+            ticket.queue.tickets
+            .filter(status=QueueStatus.WAITING)
+            .order_by('enqueued_at', 'id')
+            .values_list('id', flat=True)
+        )
+
+        try:
+            index = waiting_ids.index(ticket.id)
+        except ValueError as exc:
+            raise ValidationError({'ticket': ['Талон не найден в очереди ожидания.']}) from exc
+
+        if index >= len(waiting_ids) - 1:
+            return ticket
+
+        next_ticket = Ticket.objects.select_for_update().get(pk=waiting_ids[index + 1])
+
+        if ticket.enqueued_at == next_ticket.enqueued_at:
+            ticket.enqueued_at = next_ticket.enqueued_at + timedelta(microseconds=1)
+            ticket.save(update_fields=['enqueued_at', 'updated_at'])
+            return ticket
+
+        current_enqueued_at = ticket.enqueued_at
+        ticket.enqueued_at = next_ticket.enqueued_at
+        next_ticket.enqueued_at = current_enqueued_at
+        ticket.save(update_fields=['enqueued_at', 'updated_at'])
+        next_ticket.save(update_fields=['enqueued_at', 'updated_at'])
+
+        return ticket
+
+
+def invite_ticket_by_id(ticket_id: int, action: str | None = None) -> Ticket:
+    with transaction.atomic():
+        try:
+            ticket = Ticket.objects.select_related('queue', 'client').select_for_update().get(pk=ticket_id)
+        except Ticket.DoesNotExist as exc:
+            logger.exception('Ticket not found while inviting by id. ticket_id=%s', ticket_id)
+            raise NotFound('Талон не найден.') from exc
+
+        if ticket.status != QueueStatus.WAITING:
+            raise ValidationError({'status': ['Приглашать по id можно только талон в статусе WAITING.']})
+
+        queue = Queue.objects.select_for_update().get(pk=ticket.queue_id)
+        current_ticket = (
+            queue.tickets
+            .filter(status__in=[QueueStatus.IN_SERVICE, QueueStatus.CALLED])
+            .exclude(id=ticket.id)
+            .order_by('-updated_at', '-id')
+            .first()
+        )
+
+        if current_ticket is not None:
+            if action not in {'complete', 'return'}:
+                raise ValidationError({'action': ['Есть текущий талон. Укажите action=complete или action=return.']})
+
+            if action == 'complete':
+                current_ticket.status = QueueStatus.COMPLETED
+                current_ticket.finished_at = timezone.now()
+                current_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+            else:
+                current_ticket.status = QueueStatus.WAITING
+                current_ticket.finished_at = None
+                current_ticket.enqueued_at = timezone.now()
+                current_ticket.save(update_fields=['status', 'finished_at', 'enqueued_at', 'updated_at'])
+
+        ticket.status = QueueStatus.CALLED
+        ticket.finished_at = None
+        ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+        return ticket
+
+
+def remove_ticket_from_queue(ticket_id: int) -> Ticket:
+    return update_ticket(ticket_id=ticket_id, new_status=QueueStatus.REMOVED)
 
 
 def delete_tickets_from_queue(queue_id: int, ticket_ids: list[int]) -> dict:

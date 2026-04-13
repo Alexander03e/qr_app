@@ -1,6 +1,5 @@
 import type { TicketStatus } from "./enum";
 
-
 export interface QueueItemResponse {
   id: number;
   last_ticket_number: number;
@@ -18,6 +17,7 @@ export interface TicketItemResponse {
   queue_name: string;
   status: TicketStatus;
   display_number: string;
+  initial_ticket_number: number | null;
   enqueued_at: string;
   created_at: string;
   updated_at: string;
@@ -42,6 +42,10 @@ export interface QueueSnapshotResponse {
   waiting_tickets: QueueBoardTicketResponse[];
   client_ticket: TicketItemResponse | null;
   client_is_served: boolean;
+  client_is_removed: boolean;
+  client_is_not_arrived: boolean;
+  client_called_remaining_seconds: number | null;
+  called_ticket_timeout_seconds: number;
 }
 
 export interface InviteNextResponse {

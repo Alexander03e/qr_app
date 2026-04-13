@@ -1,5 +1,6 @@
 import {
   getOrCreateDeviceId,
+  getOrCreateQueueToken,
   paths,
   readQueueSession,
   writeQueueSession,
@@ -34,7 +35,9 @@ export const ClientAuthProvider = ({
     setQueueId,
     setIsInQueue,
     setIsServed,
+    setIsNotArrived,
     isServed,
+    isNotArrived,
     isInQueue: inQueueState,
   } = useQueueStore();
   const navigate = useNavigate();
@@ -65,13 +68,14 @@ export const ClientAuthProvider = ({
     }
 
     const session = readQueueSession();
+    const queueToken = getOrCreateQueueToken();
 
     if (session && String(session.queueId) === String(queueId)) {
-      setClientId(session.clientId);
+      setClientId(session.queueToken || session.clientId);
       return;
     }
 
-    setClientId(getOrCreateDeviceId());
+    setClientId(queueToken);
   }, [clientId, queueId, setClientId]);
 
   useEffect(() => {
@@ -90,9 +94,11 @@ export const ClientAuthProvider = ({
       setIsInQueue(Boolean(data.client_ticket));
 
       if (data.client_ticket && queueId && clientId) {
+        const queueToken = getOrCreateQueueToken();
         writeQueueSession({
           clientId,
           deviceId: getOrCreateDeviceId(),
+          queueToken,
           queueId: Number(queueId),
           ticketId: data.client_ticket.id,
         });
@@ -100,14 +106,33 @@ export const ClientAuthProvider = ({
       if (data?.client_is_served) {
         setIsServed(true);
       }
+      if (data?.client_is_removed) {
+        setIsServed(false);
+      }
+      setIsNotArrived(Boolean(data?.client_is_not_arrived));
     }
-  }, [clientId, data, queueId, setIsInQueue, setQueue, setTicket]);
+  }, [
+    clientId,
+    data,
+    queueId,
+    setIsInQueue,
+    setQueue,
+    setTicket,
+    setIsNotArrived,
+    setIsServed,
+  ]);
 
   useEffect(() => {
     if (isServed && queueId) {
       navigate(paths.leftPage(queueId!));
     }
-  }, [isServed]);
+  }, [isServed, queueId, navigate]);
+
+  useEffect(() => {
+    if (isNotArrived && queueId) {
+      navigate(paths.missedPage(queueId));
+    }
+  }, [isNotArrived, queueId, navigate]);
 
   return children;
 };

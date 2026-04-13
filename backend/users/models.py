@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy
+from django.utils import timezone
 
 class Role(models.TextChoices):
     ADMIN = 'AD', gettext_lazy('Admin')
@@ -24,3 +25,33 @@ class User(models.Model):
 
     def __str__(self):
         return str(self.fullname)
+
+
+class OperatorToken(models.Model):
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='auth_tokens')
+    key = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Токен оператора'
+        verbose_name_plural = 'Токены операторов'
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at <= timezone.now()
+
+
+class AdminToken(models.Model):
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='admin_auth_tokens')
+    key = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Токен администратора'
+        verbose_name_plural = 'Токены администраторов'
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at <= timezone.now()

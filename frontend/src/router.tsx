@@ -1,7 +1,8 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "@shared/assets/scss/index.scss";
 import { buildRouterPath, PATHS } from "@shared/consts";
 import { lazy } from "react";
+import { DebugPage } from "./pages/debug/";
 
 const ClientApp = lazy(() =>
   import(`@apps/client`).then((module) => ({ default: module.ClientApp })),
@@ -29,6 +30,8 @@ export const AppRouter = () => {
           path={buildRouterPath(PATHS.ADMIN, "*")}
           element={<AdminApp />}
         />
+        <Route path="_debug" element={<DebugPage />} />
+        <Route element={<Navigate to="_debug" />} index />
       </Routes>
     </BrowserRouter>
   );

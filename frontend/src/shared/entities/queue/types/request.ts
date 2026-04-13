@@ -17,6 +17,7 @@ export interface QueueJoinClientRequest {
   name?: string | null;
   vk_id?: string | null;
   device_id?: string | null;
+  queue_token?: string | null;
   preferred_lang?: string | null;
   phone?: string | null;
   send_notification?: boolean;
@@ -26,7 +27,12 @@ export interface QueueJoinClientRequest {
 export interface JoinQueueRequest {
   queue_id: number;
   client_id?: string;
+  queue_token?: string;
   client?: QueueJoinClientRequest;
+}
+
+export interface InviteByIdRequest {
+  action?: "complete" | "return";
 }
 
 export interface QueueDeleteTicketsRequest {
@@ -36,4 +42,3 @@ export interface QueueDeleteTicketsRequest {
 export interface QueueTicketListRequest {
   queue?: number;
 }
-

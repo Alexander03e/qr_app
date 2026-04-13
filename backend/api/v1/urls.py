@@ -9,6 +9,7 @@ urlpatterns = [
 
 # Список приложений, которые должны предоставить файл urls.py
 APPS = [
+    'users',
     'clients',
     'companies',
     'queues',

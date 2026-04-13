@@ -2,6 +2,7 @@ import { mutationOptions } from "@tanstack/react-query";
 import { queuesApi } from ".";
 import type {
   AppendToQueueResponse,
+  InviteByIdRequest,
   InviteNextResponse,
   JoinQueueRequest,
   TicketItemResponse,
@@ -15,12 +16,20 @@ export const queueMutationKeys = {
   joinQueue: ["queue", "join"],
   updateTicketStatus: ["queue", "ticket", "status"],
   appendToQueue: ["queue", "ticket", "append"],
+  skipOneAhead: ["queue", "ticket", "skip-one"],
   inviteNext: ["queue", "invite", "next"],
+  inviteById: ["queue", "ticket", "invite"],
+  removeTicket: ["queue", "ticket", "remove"],
 };
 
 interface UpdateTicketStatusVariables {
   ticketId: number;
   status: TicketStatus;
+}
+
+interface InviteByIdVariables {
+  ticketId: number;
+  payload?: InviteByIdRequest;
 }
 
 export const queueMutationOptions = {
@@ -52,6 +61,15 @@ export const queueMutationOptions = {
       ...options,
     }),
 
+  skipOneAhead: (
+    options?: MutationOptionsType<AppendToQueueResponse, number>,
+  ) =>
+    mutationOptions({
+      mutationKey: queueMutationKeys.skipOneAhead,
+      mutationFn: async (ticketId: number) => queuesApi.skipOneAhead(ticketId),
+      ...options,
+    }),
+
   inviteNext: (
     options?: MutationOptionsType<InviteNextResponse, number>,
   ) => {
@@ -69,5 +87,24 @@ export const queueMutationOptions = {
       },
       ...rest,
     })
-  }
+  },
+
+  inviteById: (
+    options?: MutationOptionsType<TicketStatusUpdateResponse, InviteByIdVariables>,
+  ) =>
+    mutationOptions({
+      mutationKey: queueMutationKeys.inviteById,
+      mutationFn: async ({ ticketId, payload }: InviteByIdVariables) =>
+        queuesApi.inviteTicketById(ticketId, payload),
+      ...options,
+    }),
+
+  removeTicket: (
+    options?: MutationOptionsType<TicketStatusUpdateResponse, number>,
+  ) =>
+    mutationOptions({
+      mutationKey: queueMutationKeys.removeTicket,
+      mutationFn: async (ticketId: number) => queuesApi.removeTicket(ticketId),
+      ...options,
+    }),
 };

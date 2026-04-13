@@ -1,11 +1,13 @@
 import {
   CLIENT_DEVICE_ID_STORAGE_KEY,
+  CLIENT_QUEUE_TOKEN_STORAGE_KEY,
   CLIENT_QUEUE_SESSION_KEY,
 } from "@shared/consts";
 
 export interface PersistedQueueSession {
   clientId: string;
   deviceId: string;
+  queueToken: string;
   queueId: number;
   ticketId: number;
 }
@@ -44,6 +46,17 @@ export const getOrCreateDeviceId = (): string => {
   return generatedId;
 };
 
+export const getOrCreateQueueToken = (): string => {
+  const storedValue = localStorage.getItem(CLIENT_QUEUE_TOKEN_STORAGE_KEY);
+  if (storedValue) {
+    return storedValue;
+  }
+
+  const generatedToken = `qt-${crypto.randomUUID().replace(/-/g, "")}`;
+  localStorage.setItem(CLIENT_QUEUE_TOKEN_STORAGE_KEY, generatedToken);
+  return generatedToken;
+};
+
 export const readQueueSession = (): PersistedQueueSession | null => {
   const rawValue = sessionStorage.getItem(CLIENT_QUEUE_SESSION_KEY);
 
@@ -64,7 +77,15 @@ export const readQueueSession = (): PersistedQueueSession | null => {
       return null;
     }
 
-    if (typeof parsedValue?.queueId === "number" && typeof parsedValue?.ticketId === "number") {
+    if (typeof parsedValue?.queueToken !== "string") {
+      sessionStorage.removeItem(CLIENT_QUEUE_SESSION_KEY);
+      return null;
+    }
+
+    if (
+      typeof parsedValue?.queueId === "number" &&
+      typeof parsedValue?.ticketId === "number"
+    ) {
       return parsedValue;
     }
   } catch {

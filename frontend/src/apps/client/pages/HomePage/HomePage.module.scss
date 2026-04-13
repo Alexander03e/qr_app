@@ -24,6 +24,11 @@
         font-weight: bold;
         white-space: pre-line;
     }
+
+    .calledTimer {
+        color: var(--success-color);
+        font-weight: 700;
+    }
 }
 
 .bottom {

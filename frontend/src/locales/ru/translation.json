@@ -1,5 +1,10 @@
 {
   "client": {
+    "removedModal": {
+      "title": "Вы удалены из очереди",
+      "description": "Оператор удалил ваш талон. Вы можете встать в очередь снова.",
+      "ok": "Понятно"
+    },
     "homePage": {
       "waitingAhead_one": "Перед вами \n{{count}} человек",
       "waitingAhead_few": "Перед вами \n{{count}} человека",
@@ -8,6 +13,7 @@
       "youAreNext": "вы - \nследующий",
       "skipOneAhead": "Пропустить одного вперед",
       "yourTicket": "Ваша \nочередь!",
+      "timeLeft": "Осталось: {{time}}",
       "leaveQueue": "Выйти из очереди",
       "leaveQueueError": "Не удалось выйти из очереди"
     },
@@ -21,6 +27,140 @@
       "queueCaption": "В очереди {{count}} человек",
       "loading": "Загрузка...",
       "errorJoinQueue": "Не удалось встать в очередь"
+    },
+    "missedPage": {
+      "title": "Вы не подошли вовремя",
+      "description": "Таймер вызова истек, талон удален из очереди. Вы можете встать снова.",
+      "returnButton": "Вернуться в очередь"
+    }
+  },
+  "operator": {
+    "login": {
+      "title": "Вход оператора",
+      "email": "Email",
+      "password": "Пароль",
+      "submit": "Войти",
+      "invalid": "Неверные учетные данные"
+    },
+    "tickets": {
+      "invite": "Пригласить",
+      "remove": "Удалить",
+      "needActionTitle": "Есть текущий талон",
+      "needActionDescription": "Перед вызовом нового талона выберите действие с текущим",
+      "complete": "Пометить как пройденный",
+      "return": "Вернуть в очередь"
+    }
+  },
+  "admin": {
+    "title": "Админ-панель",
+    "login": {
+      "title": "Вход администратора",
+      "email": "Email",
+      "password": "Пароль",
+      "submit": "Войти",
+      "invalid": "Неверные учетные данные"
+    },
+    "menu": {
+      "companies": "Компании",
+      "branches": "Филиалы",
+      "queues": "Очереди",
+      "operators": "Операторы",
+      "feedback": "Жалобы и обратная связь",
+      "metrics": "Метрики",
+      "settings": "Настройки"
+    },
+    "stats": {
+      "companies": "Компаний",
+      "branches": "Филиалов",
+      "queues": "Очередей",
+      "operators": "Операторов",
+      "feedback": "Обращений"
+    },
+    "common": {
+      "active": "Активен",
+      "inactive": "Неактивен",
+      "logout": "Выйти",
+      "actions": "Действия",
+      "delete": "Удалить",
+      "deleteConfirm": "Удалить запись?",
+      "unknownCompany": "Компания не определена"
+    },
+    "companies": {
+      "add": "Добавить компанию",
+      "name": "Название",
+      "timezone": "Часовой пояс"
+    },
+    "branches": {
+      "add": "Добавить филиал",
+      "company": "Компания",
+      "name": "Название",
+      "address": "Адрес",
+      "status": "Статус"
+    },
+    "queues": {
+      "add": "Добавить очередь",
+      "edit": "Редактировать очередь",
+      "details": "Детали очереди",
+      "name": "Название",
+      "branch": "Филиал",
+      "limit": "Лимит клиентов",
+      "url": "Ссылка",
+      "assignedOperators": "Операторы очереди",
+      "selectOperator": "Выберите оператора",
+      "assign": "Назначить в очередь",
+      "unassign": "Убрать из очереди",
+      "lastTicket": "Последний номер талона",
+      "createdAt": "Создано",
+      "updatedAt": "Обновлено"
+    },
+    "operators": {
+      "add": "Добавить оператора",
+      "edit": "Редактировать оператора",
+      "fullname": "ФИО",
+      "email": "Email",
+      "password": "Пароль",
+      "branch": "Филиал",
+      "status": "Статус"
+    },
+    "feedback": {
+      "add": "Добавить обращение",
+      "edit": "Редактировать обращение",
+      "type": "Тип",
+      "status": "Статус",
+      "title": "Тема",
+      "message": "Сообщение",
+      "branch": "Филиал",
+      "queue": "Очередь"
+    },
+    "metrics": {
+      "totalRequests": "Запросов всего",
+      "errorRequests": "Ошибочных запросов",
+      "avgLatency": "Средняя задержка",
+      "method": "Метод",
+      "endpoint": "Endpoint",
+      "requests": "Запросы"
+    },
+    "settings": {
+      "companyTitle": "Настройки компании",
+      "adminTitle": "Данные администратора",
+      "newPassword": "Новый пароль",
+      "saveCompany": "Сохранить компанию",
+      "saveAdmin": "Сохранить данные администратора"
+    },
+    "messages": {
+      "companyCreated": "Компания создана",
+      "companyUpdated": "Компания обновлена",
+      "branchCreated": "Филиал создан",
+      "queueCreated": "Очередь создана",
+      "operatorCreated": "Оператор создан",
+      "operatorUpdated": "Оператор обновлен",
+      "operatorDeleted": "Оператор удален",
+      "queueUpdated": "Очередь обновлена",
+      "queueDeleted": "Очередь удалена",
+      "feedbackCreated": "Обращение создано",
+      "feedbackUpdated": "Обращение обновлено",
+      "feedbackDeleted": "Обращение удалено",
+      "adminUpdated": "Профиль администратора обновлен"
     }
   }
 }

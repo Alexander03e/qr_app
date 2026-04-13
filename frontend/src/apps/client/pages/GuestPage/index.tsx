@@ -5,7 +5,11 @@ import { useQueueStore } from "@apps/client/store";
 import { useMutation } from "@tanstack/react-query";
 import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { useParams } from "react-router-dom";
-import { writeQueueSession, getOrCreateDeviceId } from "@apps/client/helpers";
+import {
+  writeQueueSession,
+  getOrCreateDeviceId,
+  getOrCreateQueueToken,
+} from "@apps/client/helpers";
 import { makeRequest } from "@shared/helper/handler";
 
 export const GuestPage = () => {
@@ -31,7 +35,8 @@ export const GuestPage = () => {
 
         const parsedQueueId = Number(queueId);
         const deviceId = getOrCreateDeviceId();
-        const resolvedClientId = clientId ?? deviceId;
+        const queueToken = getOrCreateQueueToken();
+        const resolvedClientId = clientId ?? queueToken;
 
         setClientId(resolvedClientId);
         setQueueId(parsedQueueId);
@@ -40,6 +45,7 @@ export const GuestPage = () => {
         writeQueueSession({
           clientId: resolvedClientId,
           deviceId,
+          queueToken,
           queueId: parsedQueueId,
           ticketId: ticket.id,
         });
@@ -55,9 +61,11 @@ export const GuestPage = () => {
     makeRequest(
       joinQueue({
         queue_id: Number(queueId),
-        client_id: clientId ?? getOrCreateDeviceId(),
+        client_id: clientId ?? getOrCreateQueueToken(),
+        queue_token: getOrCreateQueueToken(),
         client: {
           device_id: getOrCreateDeviceId(),
+          queue_token: getOrCreateQueueToken(),
         },
       }),
     );

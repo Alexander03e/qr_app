@@ -11,6 +11,7 @@ export const APP_THEME = {
       lineHeightHeading3: 1,
       titleMarginBottom: 4,
       fontWeightStrong: 700,
+      lineHeight: 1.05,
     },
   },
 } as ThemeConfig;
