@@ -37,6 +37,43 @@ def require_operator(request):
     return get_operator_by_token(token)
 
 
+def require_operator_for_queue(request, queue_id: int):
+    operator = require_operator(request)
+    has_explicit_assignments = operator.assigned_queues.exists()
+    if has_explicit_assignments:
+        if not operator.assigned_queues.filter(id=queue_id).exists():
+            raise ValidationError('Оператор не назначен на эту очередь.')
+        return operator
+
+    queue = Queue.objects.select_related('branch').filter(id=queue_id).first()
+    if queue is None:
+        raise ValidationError('Очередь не найдена.')
+
+    if operator.branch_id and queue.branch_id != operator.branch_id:
+        raise ValidationError('Оператор не назначен на эту очередь.')
+
+    return operator
+
+
+def require_operator_for_ticket(request, ticket_id: int):
+    operator = require_operator(request)
+    try:
+        ticket = Ticket.objects.select_related('queue').get(pk=ticket_id)
+    except Ticket.DoesNotExist as exc:
+        raise ValidationError('Талон не найден.') from exc
+
+    has_explicit_assignments = operator.assigned_queues.exists()
+    if has_explicit_assignments:
+        if not operator.assigned_queues.filter(id=ticket.queue_id).exists():
+            raise ValidationError('Оператор не назначен на эту очередь.')
+        return operator
+
+    if operator.branch_id and ticket.queue.branch_id != operator.branch_id:
+        raise ValidationError('Оператор не назначен на эту очередь.')
+
+    return operator
+
+
 class QueueViewSet(viewsets.ModelViewSet):
     queryset = Queue.objects.all()
     serializer_class = QueueSerializer
@@ -61,7 +98,7 @@ class QueueViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=['post'], url_path='invite-next')
     def invite_next(self, request, pk=None):
-        require_operator(request)
+        require_operator_for_queue(request, int(pk))
         ticket = invite_next_ticket(queue_id=pk)
         snapshot = get_queue_snapshot(queue_id=pk)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)
@@ -89,7 +126,7 @@ class QueueViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=['post'], url_path='tickets/delete')
     def delete_tickets(self, request, pk=None):
-        require_operator(request)
+        require_operator_for_queue(request, int(pk))
         input_serializer = QueueTicketIdsSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
@@ -148,6 +185,31 @@ class AdminQueueViewSet(viewsets.ModelViewSet):
             raise ValidationError('Нельзя создавать очередь в чужом филиале.')
 
         serializer.save()
+
+
+class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Queue.objects.select_related('branch').all().order_by('id')
+    serializer_class = AdminQueueSerializer
+
+    def _require_operator(self):
+        token = parse_bearer_token(self.request.headers.get('Authorization'))
+        return get_operator_by_token(token)
+
+    def get_queryset(self):
+        operator = self._require_operator()
+        return super().get_queryset().filter(id__in=operator.assigned_queues.values('id'))
+
+    def partial_update(self, request, *args, **kwargs):
+        raise ValidationError('Используйте endpoint /operator/queues/<id>/settings/.')
+
+    @action(detail=True, methods=['patch'], url_path='settings')
+    def queue_settings(self, request, pk=None):
+        require_operator_for_queue(request, int(pk))
+        queue = self.get_object()
+        serializer = self.get_serializer(queue, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=drf_status.HTTP_200_OK)
 
     def perform_update(self, serializer):
         admin_user = self._require_admin()
@@ -219,7 +281,7 @@ class TicketViewSet(
 
         new_status = input_serializer.validated_data['status']
         if new_status != 'LEFT':
-            require_operator(request)
+            require_operator_for_ticket(request, int(pk))
 
         ticket = update_ticket(
             ticket_id=pk,
@@ -250,7 +312,7 @@ class TicketViewSet(
     )
     @action(detail=True, methods=['post'], url_path='append-to-queue')
     def append_to_queue(self, request, pk=None):
-        require_operator(request)
+        require_operator_for_ticket(request, int(pk))
         ticket = append_to_queue(ticket_id=pk)
         snapshot = get_queue_snapshot(queue_id=ticket.queue_id)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)
@@ -302,7 +364,7 @@ class TicketViewSet(
     )
     @action(detail=True, methods=['post'], url_path='invite')
     def invite(self, request, pk=None):
-        require_operator(request)
+        require_operator_for_ticket(request, int(pk))
         input_serializer = InviteTicketByIdSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
@@ -334,7 +396,7 @@ class TicketViewSet(
     )
     @action(detail=True, methods=['post'], url_path='remove')
     def remove(self, request, pk=None):
-        require_operator(request)
+        require_operator_for_ticket(request, int(pk))
         ticket = remove_ticket_from_queue(ticket_id=pk)
         snapshot = get_queue_snapshot(queue_id=ticket.queue_id)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)

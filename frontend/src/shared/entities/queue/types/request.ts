@@ -6,8 +6,12 @@ export interface CreateQueueRequest {
   last_ticket_number?: number;
   branch?: number | null;
   name: string;
+  language?: "ru" | "en";
   notification_options?: Record<string, unknown> | null;
   clients_limit?: number | null;
+  called_ticket_timeout_seconds?: number | null;
+  poster_title?: string | null;
+  poster_subtitle?: string | null;
   queue_url?: string | null;
 }
 

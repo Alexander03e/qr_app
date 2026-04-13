@@ -78,6 +78,16 @@ class QueuesApi {
     return (await $api.post("/tickets/join/", payload)).data;
   }
 
+  async updateClientLanguage(
+    clientId: string,
+    preferredLang: "ru" | "en"
+  ): Promise<void> {
+    await $api.post("/clients/language/", {
+      client_id: clientId,
+      preferred_lang: preferredLang,
+    });
+  }
+
   async updateTicketStatus(
     ticketId: number,
     status: TicketStatus

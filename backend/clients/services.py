@@ -68,6 +68,25 @@ def get_or_create_client_by_identity(client_data: dict, branch_id: str | None = 
         client.branch_id = str(branch_id)
         update_fields.append('branch_id')
 
+    preferred_lang = client_data.get('preferred_lang')
+    if preferred_lang and client.preferred_lang != preferred_lang:
+        client.preferred_lang = preferred_lang
+        update_fields.append('preferred_lang')
+
+    name = client_data.get('name')
+    if name and client.name != name:
+        client.name = name
+        update_fields.append('name')
+
+    vk_id = client_data.get('vk_id')
+    if vk_id and client.vk_id != vk_id:
+        client.vk_id = vk_id
+        update_fields.append('vk_id')
+
+    if phone and client.phone != phone:
+        client.phone = phone
+        update_fields.append('phone')
+
     if update_fields:
         client.save(update_fields=update_fields)
 

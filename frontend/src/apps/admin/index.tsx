@@ -1,6 +1,7 @@
 import { LoadingOutlined } from "@ant-design/icons";
 import { AdminDashboard } from "@apps/admin/features/Dashboard";
 import { AdminLogin } from "@apps/admin/features/Login";
+import { AdminPosterPage } from "@apps/admin/features/Poster";
 import { adminAuth } from "@apps/admin/helpers/auth";
 import { Spin } from "antd";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +40,16 @@ export const AdminApp = () => {
   return (
     <Routes>
       <Route path="/login" element={<AdminLogin />} />
+      <Route
+        path="/queues/:queueId/poster"
+        element={
+          isAuthorized ? (
+            <AdminPosterPage />
+          ) : (
+            <Navigate replace to={`/a/login?next=${nextUrl}`} />
+          )
+        }
+      />
       <Route
         path="/*"
         element={

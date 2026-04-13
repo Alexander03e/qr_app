@@ -23,12 +23,21 @@ export interface AdminQueue {
   id: number;
   branch: number | null;
   name: string;
+  language: "ru" | "en";
   notification_options: Record<string, unknown>;
   clients_limit: number | null;
+  called_ticket_timeout_seconds: number | null;
+  poster_title: string | null;
+  poster_subtitle: string | null;
   queue_url: string | null;
   created_at: string;
   updated_at: string;
   last_ticket_number: number;
+}
+
+export interface AdminOperatorQueueSummary {
+  id: number;
+  name: string;
 }
 
 export interface AdminOperator {
@@ -37,8 +46,10 @@ export interface AdminOperator {
   email: string;
   role: string;
   is_active: boolean;
+  preferred_language: "ru" | "en";
   company: number | null;
   branch: number | null;
+  queues: AdminOperatorQueueSummary[];
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +84,11 @@ export interface AdminMetrics {
   }>;
 }
 
+export interface AdminQueueSnapshot {
+  queue_id: number;
+  waiting_count: number;
+}
+
 export interface AdminProfileSettings {
   id: number;
   fullname: string;
@@ -80,6 +96,7 @@ export interface AdminProfileSettings {
   role: string;
   branch: number | null;
   company: number | null;
+  preferred_language: "ru" | "en";
 }
 
 class AdminApi {
@@ -123,16 +140,25 @@ class AdminApi {
     ).data;
   }
 
+  async getQueueById(queueId: number): Promise<AdminQueue> {
+    return (await $api.get(`/admin/queues/${queueId}/`)).data;
+  }
+
   async createQueue(payload: {
     branch: number;
     name: string;
+    language?: "ru" | "en";
+    notification_options?: { channels: string[] };
     clients_limit?: number;
+    called_ticket_timeout_seconds?: number | null;
+    poster_title?: string | null;
+    poster_subtitle?: string | null;
     queue_url?: string;
   }): Promise<AdminQueue> {
     return (
       await $api.post("/admin/queues/", {
         ...payload,
-        notification_options: {},
+        notification_options: payload.notification_options ?? {},
       })
     ).data;
   }
@@ -142,7 +168,12 @@ class AdminApi {
     payload: {
       branch?: number;
       name?: string;
+      language?: "ru" | "en";
+      notification_options?: { channels: string[] };
       clients_limit?: number | null;
+      called_ticket_timeout_seconds?: number | null;
+      poster_title?: string | null;
+      poster_subtitle?: string | null;
       queue_url?: string | null;
     }
   ): Promise<AdminQueue> {
@@ -166,6 +197,8 @@ class AdminApi {
     email: string;
     password: string;
     branch?: number;
+    preferred_language?: "ru" | "en";
+    queue_ids?: number[];
     is_active: boolean;
   }): Promise<AdminOperator> {
     return (await $api.post("/admin/operators/", payload)).data;
@@ -178,6 +211,8 @@ class AdminApi {
       email?: string;
       password?: string;
       branch?: number | null;
+      preferred_language?: "ru" | "en";
+      queue_ids?: number[];
       is_active?: boolean;
     }
   ): Promise<AdminOperator> {
@@ -225,10 +260,15 @@ class AdminApi {
     return (await $api.get("/admin/metrics/")).data;
   }
 
+  async getQueueSnapshot(queueId: number): Promise<AdminQueueSnapshot> {
+    return (await $api.get(`/queues/${queueId}/snapshot/`)).data;
+  }
+
   async updateAdminSettings(payload: {
     fullname?: string;
     email?: string;
     password?: string;
+    preferred_language?: "ru" | "en";
   }): Promise<{ admin: AdminProfileSettings }> {
     return (await $api.patch("/auth/admin/settings/", payload)).data;
   }

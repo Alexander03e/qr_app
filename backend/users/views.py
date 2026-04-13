@@ -17,6 +17,7 @@ from users.serializers import (
 	AdminOperatorSerializer,
 	AdminProfileSerializer,
 	AdminSessionSerializer,
+	OperatorSettingsSerializer,
 	OperatorLoginResponseSerializer,
 	OperatorLoginSerializer,
 	OperatorLogoutResponseSerializer,
@@ -82,6 +83,31 @@ class OperatorLogoutView(APIView):
 		revoke_operator_token(token)
 
 		return Response({'detail': 'ok'}, status=status.HTTP_200_OK)
+
+
+class OperatorSettingsView(APIView):
+	@extend_schema(
+		request=OperatorSettingsSerializer,
+		responses={status.HTTP_200_OK: OperatorSessionSerializer},
+	)
+	def patch(self, request):
+		token = parse_bearer_token(request.headers.get('Authorization'))
+		operator_user = get_operator_by_token(token)
+
+		serializer = OperatorSettingsSerializer(
+			operator_user,
+			data=request.data,
+			partial=True,
+		)
+		serializer.is_valid(raise_exception=True)
+
+		for attr, value in serializer.validated_data.items():
+			setattr(operator_user, attr, value)
+
+		if serializer.validated_data:
+			operator_user.save(update_fields=list(serializer.validated_data.keys()))
+
+		return Response({'operator': OperatorProfileSerializer(operator_user).data}, status=status.HTTP_200_OK)
 
 
 class AdminLoginView(APIView):
@@ -167,7 +193,7 @@ class AdminSettingsView(APIView):
 
 class AdminOperatorViewSet(viewsets.ModelViewSet):
 	serializer_class = AdminOperatorSerializer
-	queryset = User.objects.select_related('company', 'branch').filter(role=Role.OPERATOR)
+	queryset = User.objects.select_related('company', 'branch').prefetch_related('assigned_queues').filter(role=Role.OPERATOR)
 
 	def _require_admin(self):
 		token = parse_bearer_token(self.request.headers.get('Authorization'))
@@ -216,10 +242,13 @@ class AdminOperatorViewSet(viewsets.ModelViewSet):
 			raise ValidationError('Нельзя назначить оператору филиал другой компании.')
 
 		password = serializer.validated_data.get('password')
+		queue_ids = serializer.validated_data.pop('queue_ids', [])
 		if not password:
 			raise ValidationError('Поле password обязательно.')
 
-		serializer.save(company_id=admin_user.company_id, role=Role.OPERATOR, password=make_password(password))
+		operator = serializer.save(company_id=admin_user.company_id, role=Role.OPERATOR, password=make_password(password))
+		if queue_ids:
+			operator.assigned_queues.set(queue_ids)
 
 	def perform_update(self, serializer):
 		admin_user = self._require_admin()
@@ -232,9 +261,14 @@ class AdminOperatorViewSet(viewsets.ModelViewSet):
 		if branch and admin_user.company_id and branch.company_id != admin_user.company_id:
 			raise ValidationError('Нельзя назначить оператору филиал другой компании.')
 
+		queue_ids = serializer.validated_data.pop('queue_ids', None)
 		password = serializer.validated_data.get('password')
 		if password:
-			serializer.save(password=make_password(password))
+			operator = serializer.save(password=make_password(password))
+			if queue_ids is not None:
+				operator.assigned_queues.set(queue_ids)
 			return
 
-		serializer.save()
+		operator = serializer.save()
+		if queue_ids is not None:
+			operator.assigned_queues.set(queue_ids)

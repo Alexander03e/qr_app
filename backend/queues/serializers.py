@@ -4,6 +4,27 @@ from queues.models import Queue, QueueStatus, Ticket
 
 
 class QueueSerializer(serializers.ModelSerializer):
+    def validate_notification_options(self, value):
+        if value is None:
+            return value
+
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('notification_options должен быть объектом.')
+
+        channels = value.get('channels')
+        if channels is None:
+            return value
+
+        if not isinstance(channels, list):
+            raise serializers.ValidationError('notification_options.channels должен быть списком.')
+
+        allowed_channels = {'sms', 'vk', 'bot', 'webpush'}
+        invalid = [item for item in channels if item not in allowed_channels]
+        if invalid:
+            raise serializers.ValidationError(f'Недопустимые каналы уведомлений: {invalid}.')
+
+        return value
+
     class Meta:
         model = Queue
         fields = '__all__'
@@ -67,6 +88,7 @@ class QueueBoardTicketSerializer(serializers.ModelSerializer):
 class QueueSnapshotSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
     queue_name = serializers.CharField()
+    queue_language = serializers.CharField()
     waiting_count = serializers.IntegerField()
     current_ticket = QueueBoardTicketSerializer(allow_null=True)
     waiting_tickets = QueueBoardTicketSerializer(many=True)
@@ -83,6 +105,9 @@ class InviteTicketByIdSerializer(serializers.Serializer):
 
 
 class AdminQueueSerializer(serializers.ModelSerializer):
+    def validate_notification_options(self, value):
+        return QueueSerializer().validate_notification_options(value)
+
     class Meta:
         model = Queue
         fields = '__all__'

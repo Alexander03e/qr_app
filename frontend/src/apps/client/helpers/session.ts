@@ -1,5 +1,6 @@
 import {
   CLIENT_DEVICE_ID_STORAGE_KEY,
+  CLIENT_LANG_STORAGE_KEY,
   CLIENT_QUEUE_TOKEN_STORAGE_KEY,
   CLIENT_QUEUE_SESSION_KEY,
 } from "@shared/consts";
@@ -103,4 +104,17 @@ export const writeQueueSession = (payload: PersistedQueueSession): void => {
 
 export const clearQueueSession = (): void => {
   sessionStorage.removeItem(CLIENT_QUEUE_SESSION_KEY);
+};
+
+export const readClientLanguage = (): "ru" | "en" | null => {
+  const value = localStorage.getItem(CLIENT_LANG_STORAGE_KEY);
+  if (value === "ru" || value === "en") {
+    return value;
+  }
+
+  return null;
+};
+
+export const writeClientLanguage = (language: "ru" | "en"): void => {
+  localStorage.setItem(CLIENT_LANG_STORAGE_KEY, language);
 };

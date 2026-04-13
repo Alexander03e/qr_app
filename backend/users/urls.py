@@ -10,6 +10,7 @@ from users.views import (
     AdminSessionView,
     OperatorLoginView,
     OperatorLogoutView,
+    OperatorSettingsView,
     OperatorSessionView,
 )
 
@@ -22,6 +23,7 @@ urlpatterns = [
     path('auth/operator/login/', OperatorLoginView.as_view(), name='operator-login'),
     path('auth/operator/me/', OperatorSessionView.as_view(), name='operator-me'),
     path('auth/operator/logout/', OperatorLogoutView.as_view(), name='operator-logout'),
+    path('auth/operator/settings/', OperatorSettingsView.as_view(), name='operator-settings'),
     path('auth/admin/login/', AdminLoginView.as_view(), name='admin-login'),
     path('auth/admin/me/', AdminSessionView.as_view(), name='admin-me'),
     path('auth/admin/logout/', AdminLogoutView.as_view(), name='admin-logout'),

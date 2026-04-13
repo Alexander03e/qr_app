@@ -8,6 +8,7 @@ export interface AdminProfile {
   role: string;
   branch: number | null;
   company: number | null;
+  preferred_language: "ru" | "en";
 }
 
 interface AdminSessionResponse {

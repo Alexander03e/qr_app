@@ -14,8 +14,19 @@ logger = logging.getLogger(__name__)
 CALLED_TICKET_TIMEOUT_SECONDS = 5 * 60
 
 
+def get_called_ticket_timeout_seconds(queue: Queue) -> int:
+    if queue.called_ticket_timeout_seconds is None:
+        return CALLED_TICKET_TIMEOUT_SECONDS
+
+    return max(int(queue.called_ticket_timeout_seconds), 0)
+
+
 def expire_called_tickets(queue: Queue) -> None:
-    threshold = timezone.now() - timedelta(seconds=CALLED_TICKET_TIMEOUT_SECONDS)
+    timeout_seconds = get_called_ticket_timeout_seconds(queue)
+    if timeout_seconds <= 0:
+        return
+
+    threshold = timezone.now() - timedelta(seconds=timeout_seconds)
     expired_tickets = queue.tickets.filter(
         status=QueueStatus.CALLED,
         updated_at__lte=threshold,
@@ -48,6 +59,7 @@ def resolve_client_from_identifier(client_id: str | None):
 
 def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
     expire_called_tickets(queue)
+    timeout_seconds = get_called_ticket_timeout_seconds(queue)
 
     waiting_qs = queue.tickets.filter(status=QueueStatus.WAITING).order_by('enqueued_at', 'id')
     current_ticket = (
@@ -76,6 +88,7 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
             return {
                 'queue_id': queue.id,
                 'queue_name': queue.name,
+                'queue_language': queue.language,
                 'waiting_count': waiting_qs.count(),
                 'current_ticket': current_ticket,
                 'waiting_tickets': list(waiting_qs),
@@ -84,7 +97,7 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
                 'client_is_removed': False,
                 'client_is_not_arrived': False,
                 'client_called_remaining_seconds': None,
-                'called_ticket_timeout_seconds': CALLED_TICKET_TIMEOUT_SECONDS,
+                'called_ticket_timeout_seconds': timeout_seconds,
             }
         client_ticket = (
             queue.tickets
@@ -117,11 +130,13 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
                 client_is_not_arrived = latest_finished_ticket.status == QueueStatus.NOT_ARRIVED
         elif client_ticket.status == QueueStatus.CALLED:
             elapsed_seconds = int((timezone.now() - client_ticket.updated_at).total_seconds())
-            client_called_remaining_seconds = max(CALLED_TICKET_TIMEOUT_SECONDS - elapsed_seconds, 0)
+            if timeout_seconds > 0:
+                client_called_remaining_seconds = max(timeout_seconds - elapsed_seconds, 0)
 
     return {
         'queue_id': queue.id,
         'queue_name': queue.name,
+        'queue_language': queue.language,
         'waiting_count': waiting_qs.count(),
         'current_ticket': current_ticket,
         'waiting_tickets': list(waiting_qs),
@@ -130,7 +145,7 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
         'client_is_removed': client_is_removed,
         'client_is_not_arrived': client_is_not_arrived,
         'client_called_remaining_seconds': client_called_remaining_seconds,
-        'called_ticket_timeout_seconds': CALLED_TICKET_TIMEOUT_SECONDS,
+        'called_ticket_timeout_seconds': timeout_seconds,
     }
 
 
@@ -227,6 +242,13 @@ def join_queue(
                     'client': ['У клиента уже есть активный талон в этой очереди.']
                 }
             )
+
+        if queue.clients_limit is not None:
+            active_tickets_count = queue.tickets.filter(
+                status__in=[QueueStatus.WAITING, QueueStatus.CALLED, QueueStatus.IN_SERVICE],
+            ).count()
+            if active_tickets_count >= queue.clients_limit:
+                raise ValidationError({'queue': ['Лимит клиентов в очереди достигнут.']})
 
         initial_ticket_number = queue.tickets.filter(status=QueueStatus.WAITING).count() + 1
 

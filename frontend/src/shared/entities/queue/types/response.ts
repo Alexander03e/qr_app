@@ -5,8 +5,12 @@ export interface QueueItemResponse {
   last_ticket_number: number;
   branch: number | null;
   name: string;
+  language: "ru" | "en";
   notification_options: Record<string, unknown> | null;
   clients_limit: number | null;
+  called_ticket_timeout_seconds: number | null;
+  poster_title: string | null;
+  poster_subtitle: string | null;
   queue_url: string | null;
   created_at: string;
   updated_at: string;
@@ -37,6 +41,7 @@ export interface QueueBoardTicketResponse {
 export interface QueueSnapshotResponse {
   queue_id: number;
   queue_name: string;
+  queue_language: "ru" | "en";
   waiting_count: number;
   current_ticket: QueueBoardTicketResponse | null;
   waiting_tickets: QueueBoardTicketResponse[];

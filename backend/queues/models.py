@@ -17,8 +17,12 @@ class Queue(models.Model):
     last_ticket_number = models.PositiveIntegerField(default=0)
     branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, null=True, related_name='queries', verbose_name='Филиал')
     name = models.CharField(max_length=255, verbose_name='Название очереди')
+    language = models.CharField(max_length=10, default='ru', verbose_name='Язык очереди')
     notification_options = models.JSONField(default=dict, null=True, blank=True, verbose_name='Настройки уведомлений')
     clients_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Лимит клиентов в очереди')
+    called_ticket_timeout_seconds = models.PositiveIntegerField(null=True, blank=True, verbose_name='Таймаут вызванного талона (сек)')
+    poster_title = models.CharField(max_length=255, null=True, blank=True, verbose_name='Заголовок плаката')
+    poster_subtitle = models.CharField(max_length=255, null=True, blank=True, verbose_name='Подзаголовок плаката')
 
     queue_url = models.CharField(max_length=255, verbose_name='Ссылка на очередь', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')

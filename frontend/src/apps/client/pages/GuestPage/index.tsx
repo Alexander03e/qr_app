@@ -9,6 +9,7 @@ import {
   writeQueueSession,
   getOrCreateDeviceId,
   getOrCreateQueueToken,
+  readClientLanguage,
 } from "@apps/client/helpers";
 import { makeRequest } from "@shared/helper/handler";
 
@@ -66,6 +67,7 @@ export const GuestPage = () => {
         client: {
           device_id: getOrCreateDeviceId(),
           queue_token: getOrCreateQueueToken(),
+          preferred_lang: readClientLanguage() ?? undefined,
         },
       }),
     );

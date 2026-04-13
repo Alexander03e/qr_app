@@ -14,8 +14,10 @@ class User(models.Model):
     password = models.CharField(max_length=128, verbose_name='Пароль')
     role = models.CharField(max_length=3, choices=Role.choices, verbose_name='Роль')
     is_active = models.BooleanField(default=True, verbose_name='Активен')
+    preferred_language = models.CharField(max_length=10, default='ru', verbose_name='Предпочитаемый язык')
     company = models.ForeignKey('companies.Company', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Компания')
     branch = models.ForeignKey('companies.Branch', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Филиал')
+    assigned_queues = models.ManyToManyField('queues.Queue', blank=True, related_name='assigned_operators', verbose_name='Назначенные очереди')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 

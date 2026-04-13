@@ -2,6 +2,7 @@ import {
   AlertOutlined,
   AreaChartOutlined,
   InfoCircleOutlined,
+  GlobalOutlined,
   EditOutlined,
   PlusOutlined,
   SettingOutlined,
@@ -20,6 +21,7 @@ import { adminApi } from "@apps/admin/helpers/api";
 import type { AdminProfile } from "@apps/admin/helpers/auth";
 import { adminAuth } from "@apps/admin/helpers/auth";
 import { queryClient } from "@shared/api";
+import { QueueSettingsPanel } from "@shared/components";
 import { makeRequest } from "@shared/helper/handler";
 import {
   Badge,
@@ -39,10 +41,11 @@ import {
   Table,
   Tag,
   Typography,
+  Tooltip,
   message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -75,7 +78,7 @@ const feedbackTypeColors: Record<FeedbackType, string> = {
 };
 
 export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [currentAdmin, setCurrentAdmin] = useState(admin);
   const [activeSection, setActiveSection] = useState<SectionKey>("operators");
@@ -101,13 +104,20 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
     email: string;
     password?: string;
     branch?: number;
+    preferred_language: "ru" | "en";
+    queue_ids?: number[];
     is_active: boolean;
   }>();
 
   const [queueForm] = Form.useForm<{
     branch: number;
     name: string;
+    language: "ru" | "en";
     clients_limit?: number;
+    called_ticket_timeout_seconds?: number;
+    notification_options?: { channels: string[] };
+    poster_title?: string;
+    poster_subtitle?: string;
     queue_url?: string;
   }>();
 
@@ -129,6 +139,7 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
     fullname: string;
     email: string;
     password?: string;
+    preferred_language: "ru" | "en";
   }>();
 
   const { data: companies = [] } = useQuery({
@@ -296,20 +307,74 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
   });
 
   const selectedQueueOperators = useMemo(() => {
-    if (!selectedQueue?.branch) {
+    if (!selectedQueue) {
       return [];
     }
 
-    return operators.filter((item) => item.branch === selectedQueue.branch);
+    return operators.filter((item) =>
+      item.queues.some((queue) => queue.id === selectedQueue.id),
+    );
   }, [operators, selectedQueue]);
 
   const assignableOperators = useMemo(() => {
-    if (!selectedQueue?.branch) {
+    if (!selectedQueue) {
       return [];
     }
 
-    return operators.filter((item) => item.branch !== selectedQueue.branch);
+    return operators.filter(
+      (item) => !item.queues.some((queue) => queue.id === selectedQueue.id),
+    );
   }, [operators, selectedQueue]);
+
+  const queueSnapshotsQueries = useQueries({
+    queries: queues.map((queue) => ({
+      queryKey: ["admin", "queue", queue.id, "snapshot"],
+      queryFn: () => adminApi.getQueueSnapshot(queue.id),
+      refetchInterval: 10000,
+    })),
+  });
+
+  const queueWaitingMap = useMemo(() => {
+    const map = new Map<number, number>();
+    queueSnapshotsQueries.forEach((query, index) => {
+      if (query.data?.queue_id) {
+        map.set(query.data.queue_id, query.data.waiting_count);
+        return;
+      }
+
+      const fallbackQueue = queues[index];
+      if (fallbackQueue) {
+        map.set(fallbackQueue.id, 0);
+      }
+    });
+
+    return map;
+  }, [queueSnapshotsQueries, queues]);
+
+  const resolveOperatorLoad = (operator: AdminOperator) => {
+    if (!operator.queues.length) {
+      return { color: "default" as const, label: "Не назначен", waiting: 0 };
+    }
+
+    const waiting = operator.queues.reduce(
+      (acc, queue) => acc + (queueWaitingMap.get(queue.id) ?? 0),
+      0,
+    );
+
+    if (waiting === 0) {
+      return { color: "success" as const, label: "Свободен", waiting };
+    }
+
+    if (waiting <= 5) {
+      return { color: "processing" as const, label: "Умеренная", waiting };
+    }
+
+    if (waiting <= 12) {
+      return { color: "warning" as const, label: "Высокая", waiting };
+    }
+
+    return { color: "error" as const, label: "Перегружен", waiting };
+  };
 
   useEffect(() => {
     const company = companies[0];
@@ -328,8 +393,13 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
       fullname: currentAdmin.fullname,
       email: currentAdmin.email,
       password: "",
+      preferred_language: currentAdmin.preferred_language,
     });
   }, [adminSettingsForm, currentAdmin]);
+
+  useEffect(() => {
+    i18n.changeLanguage(currentAdmin.preferred_language || "ru");
+  }, [currentAdmin.preferred_language, i18n]);
 
   const operatorsColumns: ColumnsType<AdminOperator> = useMemo(
     () => [
@@ -341,10 +411,30 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
       },
       { title: t("admin.operators.email"), dataIndex: "email", key: "email" },
       {
-        title: t("admin.operators.branch"),
-        dataIndex: "branch",
-        key: "branch",
-        render: (value: number | null) => value ?? "-",
+        title: "Очереди",
+        key: "queues",
+        render: (_, row) =>
+          row.queues.length ? (
+            <Space wrap>
+              {row.queues.map((queue) => (
+                <Tag key={queue.id}>{queue.name}</Tag>
+              ))}
+            </Space>
+          ) : (
+            <Typography.Text type="secondary">Не назначен</Typography.Text>
+          ),
+      },
+      {
+        title: "Загруженность",
+        key: "workload",
+        render: (_, row) => {
+          const load = resolveOperatorLoad(row);
+          return (
+            <Tooltip title={`Ожидают клиентов: ${load.waiting}`}>
+              <Badge status={load.color} text={load.label} />
+            </Tooltip>
+          );
+        },
       },
       {
         title: t("admin.operators.status"),
@@ -372,6 +462,8 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                   fullname: row.fullname,
                   email: row.email,
                   branch: row.branch ?? undefined,
+                  preferred_language: row.preferred_language,
+                  queue_ids: row.queues.map((item) => item.id),
                   is_active: row.is_active,
                 });
               }}
@@ -399,10 +491,25 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
       { title: t("admin.queues.name"), dataIndex: "name", key: "name" },
       { title: t("admin.queues.branch"), dataIndex: "branch", key: "branch" },
       {
+        title: "Язык",
+        dataIndex: "language",
+        key: "language",
+        render: (value: "ru" | "en") => (
+          <Tag icon={<GlobalOutlined />}>{value.toUpperCase()}</Tag>
+        ),
+      },
+      {
         title: t("admin.queues.limit"),
         dataIndex: "clients_limit",
         key: "clients_limit",
         render: (value: number | null) => value ?? "-",
+      },
+      {
+        title: "Таймер",
+        dataIndex: "called_ticket_timeout_seconds",
+        key: "called_ticket_timeout_seconds",
+        render: (value: number | null) =>
+          value && value > 0 ? `${value} сек` : "Выключен",
       },
       {
         title: t("admin.queues.url"),
@@ -434,7 +541,17 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                 queueForm.setFieldsValue({
                   branch: row.branch ?? undefined,
                   name: row.name,
+                  language: row.language,
                   clients_limit: row.clients_limit ?? undefined,
+                  called_ticket_timeout_seconds:
+                    row.called_ticket_timeout_seconds ?? undefined,
+                  notification_options: {
+                    channels: Array.isArray(row.notification_options?.channels)
+                      ? row.notification_options.channels
+                      : [],
+                  },
+                  poster_title: row.poster_title ?? undefined,
+                  poster_subtitle: row.poster_subtitle ?? undefined,
                   queue_url: row.queue_url ?? undefined,
                 });
               }}
@@ -611,6 +728,23 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
             <Typography.Text type="secondary">
               {currentAdmin.email}
             </Typography.Text>
+            <Select
+              size="small"
+              style={{ width: 120 }}
+              value={currentAdmin.preferred_language}
+              onChange={(value: "ru" | "en") => {
+                i18n.changeLanguage(value);
+                makeRequest(
+                  updateAdminSettingsMutation.mutateAsync({
+                    preferred_language: value,
+                  }),
+                );
+              }}
+              options={[
+                { label: "RU", value: "ru" },
+                { label: "EN", value: "en" },
+              ]}
+            />
           </Space>
           <Button onClick={onLogout}>{t("admin.common.logout")}</Button>
         </Layout.Header>
@@ -642,6 +776,8 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                     setEditingOperator(null);
                     operatorForm.resetFields();
                     operatorForm.setFieldValue("is_active", true);
+                    operatorForm.setFieldValue("preferred_language", "ru");
+                    operatorForm.setFieldValue("queue_ids", []);
                     setOperatorModalOpen(true);
                   }}
                 >
@@ -804,6 +940,7 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                       fullname: values.fullname,
                       email: values.email,
                       password: values.password || undefined,
+                      preferred_language: values.preferred_language,
                     }),
                   );
                   adminSettingsForm.setFieldValue("password", "");
@@ -829,6 +966,14 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                   rules={[{ min: 6 }]}
                 >
                   <Input.Password />
+                </Form.Item>
+                <Form.Item name="preferred_language" label="Язык интерфейса">
+                  <Select
+                    options={[
+                      { label: "Русский", value: "ru" },
+                      { label: "English", value: "en" },
+                    ]}
+                  />
                 </Form.Item>
                 <Button
                   type="primary"
@@ -860,7 +1005,7 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
         <Form
           layout="vertical"
           form={operatorForm}
-          initialValues={{ is_active: true }}
+          initialValues={{ is_active: true, preferred_language: "ru" }}
           onFinish={async (values) => {
             if (editingOperator) {
               await makeRequest(
@@ -871,6 +1016,8 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                     email: values.email,
                     password: values.password || undefined,
                     branch: values.branch ?? null,
+                    preferred_language: values.preferred_language,
+                    queue_ids: values.queue_ids ?? [],
                     is_active: values.is_active,
                   },
                 }),
@@ -884,6 +1031,8 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                 email: values.email,
                 password: values.password || "",
                 branch: values.branch,
+                preferred_language: values.preferred_language,
+                queue_ids: values.queue_ids ?? [],
                 is_active: values.is_active,
               }),
             );
@@ -916,6 +1065,24 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
             <Select
               allowClear
               options={branches.map((item) => ({
+                label: item.name,
+                value: item.id,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="preferred_language" label="Язык интерфейса">
+            <Select
+              options={[
+                { label: "Русский", value: "ru" },
+                { label: "English", value: "en" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="queue_ids" label="Назначенные очереди">
+            <Select
+              mode="multiple"
+              allowClear
+              options={queues.map((item) => ({
                 label: item.name,
                 value: item.id,
               }))}
@@ -987,16 +1154,24 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
               />
               <Button
                 type="primary"
-                disabled={!selectedOperatorForQueue || !selectedQueue.branch}
+                disabled={!selectedOperatorForQueue}
                 onClick={() => {
-                  if (!selectedOperatorForQueue || !selectedQueue.branch) {
+                  if (!selectedOperatorForQueue) {
                     return;
                   }
+
+                  const operator = operators.find(
+                    (item) => item.id === selectedOperatorForQueue,
+                  );
+                  const nextQueueIds = [
+                    ...(operator?.queues.map((item) => item.id) ?? []),
+                    selectedQueue.id,
+                  ];
 
                   makeRequest(
                     updateOperatorMutation.mutateAsync({
                       id: selectedOperatorForQueue,
-                      payload: { branch: selectedQueue.branch },
+                      payload: { queue_ids: Array.from(new Set(nextQueueIds)) },
                     }),
                   );
                   setSelectedOperatorForQueue(null);
@@ -1048,6 +1223,8 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                             fullname: row.fullname,
                             email: row.email,
                             branch: row.branch ?? undefined,
+                            preferred_language: row.preferred_language,
+                            queue_ids: row.queues.map((item) => item.id),
                             is_active: row.is_active,
                           });
                         }}
@@ -1060,7 +1237,11 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                           makeRequest(
                             updateOperatorMutation.mutateAsync({
                               id: row.id,
-                              payload: { branch: null },
+                              payload: {
+                                queue_ids: row.queues
+                                  .map((item) => item.id)
+                                  .filter((id) => id !== selectedQueue.id),
+                              },
                             }),
                           )
                         }
@@ -1071,6 +1252,26 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                   ),
                 },
               ]}
+            />
+
+            <Typography.Title level={5} style={{ marginBottom: 0 }}>
+              Настройки очереди
+            </Typography.Title>
+            <QueueSettingsPanel
+              queue={selectedQueue}
+              loading={updateQueueMutation.isPending}
+              submitText="Сохранить настройки"
+              onSubmit={(payload) => {
+                makeRequest(
+                  updateQueueMutation.mutateAsync({
+                    id: selectedQueue.id,
+                    payload,
+                  }),
+                );
+              }}
+              onOpenPoster={() =>
+                navigate(`/a/queues/${selectedQueue.id}/poster`)
+              }
             />
           </Space>
         ) : null}
@@ -1099,7 +1300,15 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
                   payload: {
                     branch: values.branch,
                     name: values.name,
+                    language: values.language,
                     clients_limit: values.clients_limit ?? null,
+                    called_ticket_timeout_seconds:
+                      values.called_ticket_timeout_seconds ?? null,
+                    notification_options: values.notification_options ?? {
+                      channels: [],
+                    },
+                    poster_title: values.poster_title ?? null,
+                    poster_subtitle: values.poster_subtitle ?? null,
                     queue_url: values.queue_url ?? null,
                   },
                 }),
@@ -1111,7 +1320,15 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
               createQueueMutation.mutateAsync({
                 branch: values.branch,
                 name: values.name,
+                language: values.language,
                 clients_limit: values.clients_limit,
+                called_ticket_timeout_seconds:
+                  values.called_ticket_timeout_seconds ?? null,
+                notification_options: values.notification_options ?? {
+                  channels: [],
+                },
+                poster_title: values.poster_title ?? null,
+                poster_subtitle: values.poster_subtitle ?? null,
                 queue_url: values.queue_url,
               }),
             );
@@ -1136,8 +1353,47 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
           >
             <Input />
           </Form.Item>
+          <Form.Item
+            name="language"
+            label="Язык"
+            initialValue="ru"
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={[
+                { label: "Русский", value: "ru" },
+                { label: "English", value: "en" },
+              ]}
+            />
+          </Form.Item>
           <Form.Item name="clients_limit" label={t("admin.queues.limit")}>
             <InputNumber min={1} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            name="called_ticket_timeout_seconds"
+            label="Таймер вызванного талона (сек)"
+          >
+            <InputNumber min={10} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            name={["notification_options", "channels"]}
+            label="Каналы уведомлений"
+          >
+            <Select
+              mode="multiple"
+              options={[
+                { label: "SMS", value: "sms" },
+                { label: "VK", value: "vk" },
+                { label: "Bot", value: "bot" },
+                { label: "Web Push", value: "webpush" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="poster_title" label="Заголовок плаката">
+            <Input />
+          </Form.Item>
+          <Form.Item name="poster_subtitle" label="Подзаголовок плаката">
+            <Input />
           </Form.Item>
           <Form.Item name="queue_url" label={t("admin.queues.url")}>
             <Input />
