@@ -37,9 +37,11 @@ export const Header = () => {
     return <div className={styles.wrapper} />;
   }
   return (
-    <Flex className={styles.wrapper}>
-      <HomeFilled />
-      <Typography>{queueData?.queue_name}</Typography>
+    <Flex justify="space-between" className={styles.wrapper}>
+      <Flex gap={8} align={"center"}>
+        <HomeFilled />
+        <Typography>{queueData?.queue_name}</Typography>
+      </Flex>
       <Select
         size="small"
         value={i18n.language.startsWith("en") ? "en" : "ru"}

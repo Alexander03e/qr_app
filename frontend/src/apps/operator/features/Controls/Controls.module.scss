@@ -2,7 +2,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    border: 1px solid var(--primary-color);
+    align-items: center;
     padding: 24px;
 
     .controls {
@@ -12,10 +12,18 @@
     }
 
     .currentTicket {
-        padding: 12px;
+        padding: 24px;
         background-color: var(--primary-color-mask-10);
         text-align: center;
         border-radius: 12px;
         color: var(--primary-color);
+    }
+
+    .currentTicketTitle {
+        text-transform: uppercase;
+
+        &.noActiveTicket {
+            text-transform: lowercase;
+        }
     }
 }

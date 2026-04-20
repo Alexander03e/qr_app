@@ -2,13 +2,11 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    border: 1px solid var(--primary-color);
-    padding: 24px;
 
     .list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .ticketItem {
@@ -19,5 +17,6 @@
         padding: 10px;
         border: 1px solid #d9d9d9;
         border-radius: 8px;
+        background-color: white;
     }
 }

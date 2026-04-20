@@ -6,6 +6,9 @@ import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { TICKET_STATUS } from "@shared/entities/queue/types/enum";
 import { operatorAuth } from "@apps/operator/helpers/auth";
 import { useNavigate } from "react-router-dom";
+import { DoubleRightOutlined, RollbackOutlined } from "@ant-design/icons";
+import { Circle } from "@shared/components/Circle";
+import cn from "classnames";
 export const Controls = () => {
   const navigate = useNavigate();
   const { queueData, queueId, setQueue } = useOperatorQueue();
@@ -52,23 +55,35 @@ export const Controls = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.top}>
-        {queueData?.current_ticket ? (
-          <>
-            <p>Текущий талон:</p>
-            <div className={styles.currentTicket}>
-              <Typography color="green">
-                {queueData?.current_ticket?.display_number}
-              </Typography>
-            </div>
-          </>
-        ) : (
-          <p>Активного талона нет</p>
-        )}
-      </div>
+      <Circle
+        title={
+          <Typography.Title
+            className={cn(styles.currentTicketTitle, {
+              [styles.noActiveTicket]: !queueData?.current_ticket,
+            })}
+            level={3}
+          >
+            {queueData?.current_ticket?.display_number ||
+              "Нет активного \nталона"}
+          </Typography.Title>
+        }
+        isProgress={false}
+        progressProps={{ percent: 100 }}
+      />
       <div className={styles.controls}>
-        <Button onClick={handleReturnToQueue}>Вернуть в очередь</Button>
-        <Button onClick={handleNext}>Следующий</Button>
+        {queueData?.current_ticket && (
+          <Button onClick={handleReturnToQueue} icon={<RollbackOutlined />}>
+            Вернуть в очередь
+          </Button>
+        )}
+        <Button
+          variant="filled"
+          type="primary"
+          onClick={handleNext}
+          icon={<DoubleRightOutlined />}
+        >
+          Следующий
+        </Button>
         <Button danger onClick={handleLogout}>
           Выйти
         </Button>

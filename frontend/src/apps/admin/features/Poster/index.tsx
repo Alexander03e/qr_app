@@ -1,4 +1,5 @@
-import { adminApi } from "@apps/admin/helpers/api";
+import { adminApi } from "@shared/entities/admin/api";
+import { adminQueryOptions } from "@shared/entities/admin/api/queries";
 import { QueuePosterEditor } from "@shared/components";
 import { makeRequest } from "@shared/helper/handler";
 import { useQuery } from "@tanstack/react-query";
@@ -10,11 +11,9 @@ export const AdminPosterPage = () => {
   const navigate = useNavigate();
 
   const parsedQueueId = Number(queueId);
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "queue", parsedQueueId],
-    queryFn: () => adminApi.getQueueById(parsedQueueId),
-    enabled: Number.isFinite(parsedQueueId),
-  });
+  const { data, isLoading } = useQuery(
+    adminQueryOptions.queueById(parsedQueueId),
+  );
 
   if (isLoading) {
     return <Spin />;

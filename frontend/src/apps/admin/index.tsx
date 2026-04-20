@@ -2,6 +2,13 @@ import { LoadingOutlined } from "@ant-design/icons";
 import { AdminDashboard } from "@apps/admin/features/Dashboard";
 import { AdminLogin } from "@apps/admin/features/Login";
 import { AdminPosterPage } from "@apps/admin/features/Poster";
+import {
+  FeedbackPage,
+  MetricsPage,
+  OperatorsPage,
+  QueuesPage,
+  SettingsPage,
+} from "@apps/admin/pages";
 import { adminAuth } from "@apps/admin/helpers/auth";
 import { Spin } from "antd";
 import { useQuery } from "@tanstack/react-query";
@@ -59,7 +66,14 @@ export const AdminApp = () => {
             <Navigate replace to={`/a/login?next=${nextUrl}`} />
           )
         }
-      />
+      >
+        <Route index element={<Navigate replace to="operators" />} />
+        <Route path="operators" element={<OperatorsPage />} />
+        <Route path="queues" element={<QueuesPage />} />
+        <Route path="feedback" element={<FeedbackPage />} />
+        <Route path="metrics" element={<MetricsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
     </Routes>
   );
 };

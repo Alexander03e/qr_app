@@ -6,6 +6,7 @@ import { Button, Modal, Space } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import styles from "./TicketsList.module.scss";
+import { TicketItem } from "@apps/operator/components/TicketItem";
 
 export const TicketsList = () => {
   const { queueData, setQueue } = useOperatorQueue();
@@ -13,7 +14,7 @@ export const TicketsList = () => {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
 
-  const { mutateAsync: inviteById, isPending: isInvitePending } = useMutation(
+  const { mutateAsync: inviteById } = useMutation(
     queueMutationOptions.inviteById({
       onSuccess: (data) => {
         setQueue(data.queue_snapshot);
@@ -21,7 +22,7 @@ export const TicketsList = () => {
     }),
   );
 
-  const { mutateAsync: removeTicket, isPending: isRemovePending } = useMutation(
+  const { mutateAsync: removeTicket } = useMutation(
     queueMutationOptions.removeTicket({
       onSuccess: (data) => {
         setQueue(data.queue_snapshot);
@@ -62,28 +63,25 @@ export const TicketsList = () => {
       </div>
       <div className={styles.list}>
         {queueData?.waiting_tickets.map((ticket, index) => (
-          <div className={styles.ticketItem} key={`ticket.${ticket.id}`}>
-            <span>
-              {index + 1}. {ticket.display_number}
-            </span>
-            <Space>
-              <Button
-                size="small"
-                onClick={() => handleInviteById(ticket.id)}
-                loading={isInvitePending}
-              >
-                {t("operator.tickets.invite")}
-              </Button>
-              <Button
-                danger
-                size="small"
-                onClick={() => handleRemoveTicket(ticket.id)}
-                loading={isRemovePending}
-              >
-                {t("operator.tickets.remove")}
-              </Button>
-            </Space>
-          </div>
+          <TicketItem
+            index={index}
+            ticketNumber={ticket.display_number}
+            menu={{
+              items: [
+                {
+                  key: "invite",
+                  label: t("operator.tickets.invite"),
+                  onClick: () => handleInviteById(ticket.id),
+                },
+                {
+                  danger: true,
+                  key: "remove",
+                  label: t("operator.tickets.remove"),
+                  onClick: () => handleRemoveTicket(ticket.id),
+                },
+              ],
+            }}
+          />
         ))}
       </div>
       <Modal
