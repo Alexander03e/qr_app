@@ -6,6 +6,7 @@ import { Outlet } from "react-router-dom";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { DashboardSidebar } from "./components/DashboardSidebar";
 import { DashboardStats } from "./components/DashboardStats";
+import { BranchModal } from "./components/modals/BranchModal";
 import { FeedbackModal } from "./components/modals/FeedbackModal";
 import { OperatorModal } from "./components/modals/OperatorModal";
 import { QueueDetailsModal } from "./components/modals/QueueDetailsModal";
@@ -37,6 +38,7 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
           </Layout.Content>
         </Layout>
 
+        <BranchModal />
         <OperatorModal />
         <QueueDetailsModal />
         <QueueModal />

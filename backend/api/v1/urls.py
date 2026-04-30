@@ -13,6 +13,8 @@ APPS = [
     'clients',
     'companies',
     'queues',
+    'notifications',
+    'analytics',
 ]
 
 for app in APPS:

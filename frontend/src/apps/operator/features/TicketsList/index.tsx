@@ -2,7 +2,7 @@ import { useOperatorQueue } from "@apps/operator/store";
 import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { makeRequest } from "@shared/helper/handler";
 import { useMutation } from "@tanstack/react-query";
-import { Button, Modal, Space } from "antd";
+import { Button, Empty, Modal, Space, Typography } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import styles from "./TicketsList.module.scss";
@@ -59,31 +59,44 @@ export const TicketsList = () => {
   return (
     <div className={styles.container}>
       <div className={styles.top}>
-        Всего в очереди {queueData?.waiting_count}
+        <Typography.Text strong>
+          {t("operator.tickets.waitingCount", {
+            count: queueData?.waiting_count ?? 0,
+          })}
+        </Typography.Text>
       </div>
-      <div className={styles.list}>
-        {queueData?.waiting_tickets.map((ticket, index) => (
-          <TicketItem
-            index={index}
-            ticketNumber={ticket.display_number}
-            menu={{
-              items: [
-                {
-                  key: "invite",
-                  label: t("operator.tickets.invite"),
-                  onClick: () => handleInviteById(ticket.id),
-                },
-                {
-                  danger: true,
-                  key: "remove",
-                  label: t("operator.tickets.remove"),
-                  onClick: () => handleRemoveTicket(ticket.id),
-                },
-              ],
-            }}
-          />
-        ))}
-      </div>
+      {Boolean(queueData?.waiting_count && queueData?.waiting_count > 0) && (
+        <div className={styles.list}>
+          {queueData?.waiting_tickets.map((ticket, index) => (
+            <TicketItem
+              key={ticket.id}
+              index={index + 1}
+              ticketNumber={ticket.display_number}
+              menu={{
+                items: [
+                  {
+                    key: "invite",
+                    label: t("operator.tickets.invite"),
+                    onClick: () => handleInviteById(ticket.id),
+                  },
+                  {
+                    danger: true,
+                    key: "remove",
+                    label: t("operator.tickets.remove"),
+                    onClick: () => handleRemoveTicket(ticket.id),
+                  },
+                ],
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {!queueData?.waiting_count && (
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={t("operator.tickets.empty")}
+        />
+      )}
       <Modal
         title={t("operator.tickets.needActionTitle")}
         open={isActionModalOpen}

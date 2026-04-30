@@ -1,5 +1,6 @@
 import {
   AlertOutlined,
+  ApartmentOutlined,
   AreaChartOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -25,6 +26,11 @@ export const DashboardSidebar = () => {
       key: "operators",
       icon: <TeamOutlined />,
       label: t("admin.menu.operators"),
+    },
+    {
+      key: "branches",
+      icon: <ApartmentOutlined />,
+      label: t("admin.menu.branches"),
     },
     {
       key: "queues",

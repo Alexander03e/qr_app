@@ -42,6 +42,8 @@ class Ticket(models.Model):
     display_number = models.CharField(max_length=20, verbose_name='Показанный номер')
     initial_ticket_number = models.PositiveIntegerField(null=True, blank=True, verbose_name='Изначальный номер в очереди')
     enqueued_at = models.DateTimeField(default=timezone.now, verbose_name='Время постановки в очередь')
+    called_at = models.DateTimeField(null=True, blank=True, verbose_name='Время вызова')
+    service_started_at = models.DateTimeField(null=True, blank=True, verbose_name='Время начала обслуживания')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата завершения')
@@ -52,4 +54,3 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f'{self.display_number}.{self.status}'
-

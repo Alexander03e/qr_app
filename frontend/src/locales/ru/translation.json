@@ -13,13 +13,25 @@
       "youAreNext": "вы - \nследующий",
       "skipOneAhead": "Пропустить одного вперед",
       "yourTicket": "Ваша \nочередь!",
+      "inService": "Вас \nобслуживают",
       "timeLeft": "Осталось: {{time}}",
+      "estimatedWait": "Примерное ожидание: {{time}}",
+      "lessThanMinute": "меньше минуты",
+      "minutes_one": "{{count}} минута",
+      "minutes_few": "{{count}} минуты",
+      "minutes_many": "{{count}} минут",
+      "minutes_other": "{{count}} минуты",
+      "currentTicket": "Сейчас",
+      "noCurrentTicket": "нет вызова",
+      "waitingTotal": "Ожидают",
       "leaveQueue": "Выйти из очереди",
       "leaveQueueError": "Не удалось выйти из очереди"
     },
     "leftPage": {
       "title": "Вы покинули очередь",
+      "completedTitle": "Обслуживание завершено",
       "description": "Но вы можете занять место еще раз, для этого нажмите кнопку ниже",
+      "completedDescription": "Спасибо за визит. При необходимости вы можете занять место еще раз.",
       "returnButton": "Вернуться в очередь"
     },
     "guestPage": {
@@ -32,6 +44,24 @@
       "title": "Вы не подошли вовремя",
       "description": "Таймер вызова истек, талон удален из очереди. Вы можете встать снова.",
       "returnButton": "Вернуться в очередь"
+    },
+    "feedback": {
+      "title": "Обратная связь",
+      "type": "Тип обращения",
+      "types": {
+        "FEEDBACK": "Отзыв",
+        "COMPLAINT": "Жалоба"
+      },
+      "message": "Сообщение",
+      "messagePlaceholder": "Расскажите, как прошло ожидание или обслуживание",
+      "messageRequired": "Введите сообщение",
+      "submit": "Отправить",
+      "success": "Обращение отправлено",
+      "done": "Спасибо, обращение передано администратору.",
+      "generatedTitle": {
+        "completed": "Отзыв после обслуживания",
+        "left": "Обращение после выхода из очереди"
+      }
     }
   },
   "operator": {
@@ -42,7 +72,34 @@
       "submit": "Войти",
       "invalid": "Неверные учетные данные"
     },
+    "status": {
+      "IDLE": "Нет активного талона",
+      "WAITING": "Ожидает",
+      "CALLED": "Вызван",
+      "IN_SERVICE": "Обслуживается",
+      "COMPLETED": "Завершен",
+      "SKIPPED": "Пропущен",
+      "LEFT": "Клиент ушел",
+      "NOT_ARRIVED": "Не подошел",
+      "REMOVED": "Удален"
+    },
+    "controls": {
+      "emptyTicket": "Нет активного \nталона",
+      "waitingCount": "Ожидает: {{count}}",
+      "readyForNext": "Рабочее место свободно",
+      "next": "Следующий",
+      "startService": "Начать обслуживание",
+      "completeService": "Завершить обслуживание",
+      "notArrived": "Не подошел",
+      "returnToQueue": "Вернуть в очередь",
+      "removeCurrent": "Удалить талон",
+      "removeConfirmTitle": "Удалить текущий талон?",
+      "removeConfirmOk": "Удалить",
+      "removeConfirmCancel": "Отмена"
+    },
     "tickets": {
+      "waitingCount": "Всего в очереди: {{count}}",
+      "empty": "Ожидающих талонов нет",
       "invite": "Пригласить",
       "remove": "Удалить",
       "needActionTitle": "Есть текущий талон",
@@ -92,10 +149,13 @@
     },
     "branches": {
       "add": "Добавить филиал",
+      "edit": "Редактировать филиал",
       "company": "Компания",
       "name": "Название",
       "address": "Адрес",
-      "status": "Статус"
+      "status": "Статус",
+      "schedule": "Рабочее расписание JSON",
+      "scheduleError": "Введите корректный JSON-объект"
     },
     "queues": {
       "add": "Добавить очередь",
@@ -136,6 +196,22 @@
       "totalRequests": "Запросов всего",
       "errorRequests": "Ошибочных запросов",
       "avgLatency": "Средняя задержка",
+      "activeTickets": "Активных талонов",
+      "completed": "Завершено",
+      "notArrived": "Неявки",
+      "leftTickets": "Уходы",
+      "avgWait": "Среднее ожидание",
+      "avgService": "Среднее обслуживание",
+      "queueReport": "Отчет по очередям",
+      "operatorReport": "Загрузка операторов",
+      "peakHours": "Пиковые часы",
+      "technicalReport": "Технические метрики API",
+      "queue": "Очередь",
+      "branch": "Филиал",
+      "waiting": "Ожидают",
+      "operator": "Оператор",
+      "hour": "Час",
+      "tickets": "Талоны",
       "method": "Метод",
       "endpoint": "Endpoint",
       "requests": "Запросы"
@@ -151,6 +227,8 @@
       "companyCreated": "Компания создана",
       "companyUpdated": "Компания обновлена",
       "branchCreated": "Филиал создан",
+      "branchUpdated": "Филиал обновлен",
+      "branchDeleted": "Филиал удален",
       "queueCreated": "Очередь создана",
       "operatorCreated": "Оператор создан",
       "operatorUpdated": "Оператор обновлен",

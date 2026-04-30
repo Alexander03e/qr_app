@@ -51,6 +51,7 @@ export interface QueueSnapshotResponse {
   client_is_not_arrived: boolean;
   client_called_remaining_seconds: number | null;
   called_ticket_timeout_seconds: number;
+  estimated_wait_seconds: number | null;
 }
 
 export interface InviteNextResponse {

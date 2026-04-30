@@ -1,4 +1,5 @@
 import type {
+  AdminBranch,
   AdminFeedbackItem,
   AdminOperator,
   AdminQueue,
@@ -13,6 +14,7 @@ import { useTranslation } from "react-i18next";
 
 import type {
   AdminSettingsFormValues,
+  BranchFormValues,
   CompanyFormValues,
   FeedbackFormValues,
   OperatorFormValues,
@@ -30,11 +32,13 @@ export const useAdminDashboardController = ({
   const { t, i18n } = useTranslation();
 
   const [currentAdmin, setCurrentAdmin] = useState(admin);
+  const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [operatorModalOpen, setOperatorModalOpen] = useState(false);
   const [queueModalOpen, setQueueModalOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [queueDetailsOpen, setQueueDetailsOpen] = useState(false);
 
+  const [editingBranch, setEditingBranch] = useState<AdminBranch | null>(null);
   const [editingOperator, setEditingOperator] = useState<AdminOperator | null>(
     null,
   );
@@ -46,6 +50,7 @@ export const useAdminDashboardController = ({
     number | null
   >(null);
 
+  const [branchForm] = Form.useForm<BranchFormValues>();
   const [operatorForm] = Form.useForm<OperatorFormValues>();
   const [queueForm] = Form.useForm<QueueFormValues>();
   const [feedbackForm] = Form.useForm<FeedbackFormValues>();
@@ -53,7 +58,9 @@ export const useAdminDashboardController = ({
   const [adminSettingsForm] = Form.useForm<AdminSettingsFormValues>();
 
   const { data: companies = [] } = useQuery(adminQueryOptions.companies());
-  const { data: branches = [] } = useQuery(adminQueryOptions.branches());
+  const { data: branches = [], isLoading: branchesLoading } = useQuery(
+    adminQueryOptions.branches(),
+  );
   const { data: queues = [], isLoading: queuesLoading } = useQuery(
     adminQueryOptions.queues(),
   );
@@ -91,6 +98,36 @@ export const useAdminDashboardController = ({
     adminMutationOptions.deleteOperator({
       onSuccess: () => {
         message.success(t("admin.messages.operatorDeleted"));
+      },
+    }),
+  );
+
+  const createBranchMutation = useMutation(
+    adminMutationOptions.createBranch({
+      onSuccess: () => {
+        setBranchModalOpen(false);
+        setEditingBranch(null);
+        branchForm.resetFields();
+        message.success(t("admin.messages.branchCreated"));
+      },
+    }),
+  );
+
+  const updateBranchMutation = useMutation(
+    adminMutationOptions.updateBranch({
+      onSuccess: () => {
+        setBranchModalOpen(false);
+        setEditingBranch(null);
+        branchForm.resetFields();
+        message.success(t("admin.messages.branchUpdated"));
+      },
+    }),
+  );
+
+  const deleteBranchMutation = useMutation(
+    adminMutationOptions.deleteBranch({
+      onSuccess: () => {
+        message.success(t("admin.messages.branchDeleted"));
       },
     }),
   );
@@ -267,6 +304,8 @@ export const useAdminDashboardController = ({
     t,
     i18n,
     currentAdmin,
+    branchModalOpen,
+    setBranchModalOpen,
     operatorModalOpen,
     setOperatorModalOpen,
     queueModalOpen,
@@ -275,6 +314,8 @@ export const useAdminDashboardController = ({
     setFeedbackModalOpen,
     queueDetailsOpen,
     setQueueDetailsOpen,
+    editingBranch,
+    setEditingBranch,
     editingOperator,
     setEditingOperator,
     editingQueue,
@@ -285,6 +326,7 @@ export const useAdminDashboardController = ({
     setSelectedQueue,
     selectedOperatorForQueue,
     setSelectedOperatorForQueue,
+    branchForm,
     operatorForm,
     queueForm,
     feedbackForm,
@@ -292,6 +334,7 @@ export const useAdminDashboardController = ({
     adminSettingsForm,
     companies,
     branches,
+    branchesLoading,
     queues,
     queuesLoading,
     operators,
@@ -302,6 +345,9 @@ export const useAdminDashboardController = ({
     createOperatorMutation,
     updateOperatorMutation,
     deleteOperatorMutation,
+    createBranchMutation,
+    updateBranchMutation,
+    deleteBranchMutation,
     createQueueMutation,
     updateQueueMutation,
     deleteQueueMutation,

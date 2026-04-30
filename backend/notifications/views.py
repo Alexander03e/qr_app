@@ -1,10 +1,41 @@
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from notifications.models import FeedbackItem, FeedbackStatus
-from notifications.serializers import AdminFeedbackItemSerializer
+from notifications.serializers import (
+	AdminFeedbackItemSerializer,
+	PublicFeedbackCreateSerializer,
+	PublicFeedbackItemSerializer,
+)
+from notifications.services import create_client_feedback
 from users.services import get_admin_by_token, parse_bearer_token
+
+
+class PublicFeedbackCreateView(APIView):
+	authentication_classes = []
+	permission_classes = []
+
+	@extend_schema(
+		request=PublicFeedbackCreateSerializer,
+		responses={status.HTTP_201_CREATED: PublicFeedbackItemSerializer},
+	)
+	def post(self, request):
+		serializer = PublicFeedbackCreateSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+
+		feedback_item = create_client_feedback(
+			queue_id=serializer.validated_data['queue_id'],
+			feedback_type=serializer.validated_data['type'],
+			title=serializer.validated_data.get('title'),
+			message=serializer.validated_data['message'],
+		)
+		output_serializer = PublicFeedbackItemSerializer(feedback_item)
+		return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AdminFeedbackItemViewSet(viewsets.ModelViewSet):

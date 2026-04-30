@@ -11,14 +11,23 @@ import {
   getOrCreateDeviceId,
   getOrCreateQueueToken,
 } from "@apps/client/helpers";
-import { makeRequest } from "../../../../shared/helper/handler";
+import { makeRequest } from "@shared/helper/handler";
+import { FeedbackForm } from "@apps/client/features";
+import styles from "./LeftPage.module.scss";
 
 export const LeftPage = () => {
   const { t } = useTranslation();
   const { queueId } = useParams();
   const navigate = useNavigate();
-  const { clientId, setClientId, setQueueId, setTicket, setIsInQueue } =
-    useQueueStore();
+  const {
+    clientId,
+    setClientId,
+    setQueueId,
+    setTicket,
+    setIsInQueue,
+    isServed,
+    setIsServed,
+  } = useQueueStore();
 
   const deviceId = useMemo(() => getOrCreateDeviceId(), []);
   const queueToken = useMemo(() => getOrCreateQueueToken(), []);
@@ -37,6 +46,7 @@ export const LeftPage = () => {
         setQueueId(parsedQueueId);
         setTicket(ticket);
         setIsInQueue(true);
+        setIsServed(false);
         writeQueueSession({
           clientId: resolvedClientId,
           deviceId,
@@ -65,14 +75,26 @@ export const LeftPage = () => {
   };
 
   return (
-    <Flex gap={12} vertical>
+    <Flex className={styles.wrapper} gap={16} vertical>
       <Typography.Title level={3}>
-        {t("client.leftPage.title")}
+        {isServed
+          ? t("client.leftPage.completedTitle")
+          : t("client.leftPage.title")}
       </Typography.Title>
-      <Typography>{t("client.leftPage.description")}</Typography>
+      <Typography>
+        {isServed
+          ? t("client.leftPage.completedDescription")
+          : t("client.leftPage.description")}
+      </Typography>
+      {queueId ? (
+        <FeedbackForm
+          queueId={Number(queueId)}
+          origin={isServed ? "completed" : "left"}
+        />
+      ) : null}
       <Button
         type="primary"
-        style={{ width: "fit-content" }}
+        className={styles.returnButton}
         loading={isPending}
         onClick={handleJoinQueue}
       >

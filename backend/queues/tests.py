@@ -6,7 +6,7 @@ from django.utils import timezone
 from clients.models import Client
 from companies.models import Branch, Company
 from queues.models import Queue, QueueStatus, Ticket
-from users.models import OperatorToken, Role, User
+from users.models import AdminToken, OperatorToken, Role, User
 
 
 class QueueTicketApiTests(APITestCase):
@@ -38,9 +38,27 @@ class QueueTicketApiTests(APITestCase):
 			key='test-operator-token',
 			expires_at=timezone.now() + timedelta(hours=1),
 		)
+		self.admin = User.objects.create(
+			fullname='Admin One',
+			email='admin@example.com',
+			password='secret123',
+			role=Role.ADMIN,
+			company=self.company,
+		)
+		self.admin_token = AdminToken.objects.create(
+			user=self.admin,
+			key='test-admin-token',
+			expires_at=timezone.now() + timedelta(hours=1),
+		)
 
 	def operator_headers(self):
 		return {'HTTP_AUTHORIZATION': f'Bearer {self.operator_token.key}'}
+
+	def admin_headers(self):
+		return {'HTTP_AUTHORIZATION': f'Bearer {self.admin_token.key}'}
+
+	def assign_operator(self, *queues):
+		self.operator.assigned_queues.add(*queues)
 
 	def test_create_queue(self):
 		payload = {
@@ -48,7 +66,12 @@ class QueueTicketApiTests(APITestCase):
 			'name': 'Касса 1',
 		}
 
-		response = self.client.post('/api/v1/queues/', payload, format='json')
+		response = self.client.post(
+			'/api/v1/admin/queues/',
+			payload,
+			**self.admin_headers(),
+			format='json',
+		)
 
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(response.data['name'], 'Касса 1')
@@ -233,6 +256,46 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.data['client_ticket']['id'], ticket.id)
 		self.assertFalse(response.data['client_is_served'])
 
+	def test_queue_snapshot_contains_estimated_wait_seconds(self):
+		queue = Queue.objects.create(branch=self.branch, name='Оценка ожидания')
+		self.assign_operator(queue)
+		now = timezone.now()
+		served_client = Client.objects.create(name='Served ETA', branch_id=str(self.branch.id))
+		waiting_client = Client.objects.create(name='Waiting ETA', branch_id=str(self.branch.id))
+
+		Ticket.objects.create(
+			queue=queue,
+			client=served_client,
+			status=QueueStatus.COMPLETED,
+			display_number='Q1-0900',
+			called_at=now - timedelta(minutes=9),
+			service_started_at=now - timedelta(minutes=8),
+			finished_at=now - timedelta(minutes=5),
+		)
+		first_ticket = Ticket.objects.create(
+			queue=queue,
+			client=waiting_client,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0901',
+		)
+		client_ticket = Ticket.objects.create(
+			queue=queue,
+			client=self.client_obj,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0902',
+		)
+		Ticket.objects.filter(id=first_ticket.id).update(enqueued_at=now - timedelta(minutes=2))
+		Ticket.objects.filter(id=client_ticket.id).update(enqueued_at=now - timedelta(minutes=1))
+
+		response = self.client.get(
+			f'/api/v1/queues/{queue.id}/snapshot/',
+			{'client_id': self.client_obj.device_id},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['estimated_wait_seconds'], 360)
+
 	def test_queue_snapshot_marks_client_as_served(self):
 		queue = Queue.objects.create(branch=self.branch, name='История клиента')
 		Ticket.objects.create(
@@ -254,6 +317,7 @@ class QueueTicketApiTests(APITestCase):
 
 	def test_status_update_returns_ticket_and_snapshot(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 1')
+		self.assign_operator(queue)
 		ticket = Ticket.objects.create(
 			queue=queue,
 			client=self.client_obj,
@@ -310,8 +374,39 @@ class QueueTicketApiTests(APITestCase):
 
 		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+	def test_operator_cannot_manage_unassigned_queue(self):
+		queue = Queue.objects.create(branch=self.branch, name='Чужая очередь')
+
+		response = self.client.post(
+			f'/api/v1/queues/{queue.id}/invite-next/',
+			{},
+			**self.operator_headers(),
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+	def test_operator_cannot_manage_unassigned_ticket(self):
+		queue = Queue.objects.create(branch=self.branch, name='Чужой талон')
+		ticket = Ticket.objects.create(
+			queue=queue,
+			client=self.client_obj,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0006',
+		)
+
+		response = self.client.patch(
+			f'/api/v1/tickets/{ticket.id}/status/',
+			{'status': QueueStatus.CALLED},
+			**self.operator_headers(),
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 	def test_invite_next_marks_previous_and_calls_waiting(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 2')
+		self.assign_operator(queue)
 		served_client = Client.objects.create(
 			name='Served',
 			phone='+79990004455',
@@ -365,6 +460,7 @@ class QueueTicketApiTests(APITestCase):
 
 	def test_append_to_queue_moves_active_ticket_to_end(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 3')
+		self.assign_operator(queue)
 		client_a = Client.objects.create(
 			name='A',
 			phone='+79990007788',
@@ -407,9 +503,61 @@ class QueueTicketApiTests(APITestCase):
 		)
 		self.assertEqual(waiting_order, [waiting_ticket.id, active_ticket.id])
 
+	def test_operator_can_return_in_service_ticket_to_queue(self):
+		queue = Queue.objects.create(branch=self.branch, name='Окно 3.1')
+		self.assign_operator(queue)
+		waiting_client = Client.objects.create(
+			name='Waiting Return',
+			phone='+79990008810',
+			branch_id=str(self.branch.id),
+		)
+		active_client = Client.objects.create(
+			name='Active Return',
+			phone='+79990008811',
+			branch_id=str(self.branch.id),
+		)
+
+		waiting_ticket = Ticket.objects.create(
+			queue=queue,
+			client=waiting_client,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0022',
+		)
+		active_ticket = Ticket.objects.create(
+			queue=queue,
+			client=active_client,
+			status=QueueStatus.IN_SERVICE,
+			display_number='Q1-0023',
+			called_at=timezone.now() - timedelta(minutes=5),
+			service_started_at=timezone.now() - timedelta(minutes=3),
+		)
+		Ticket.objects.filter(id=waiting_ticket.id).update(enqueued_at=timezone.now() - timedelta(minutes=10))
+
+		response = self.client.patch(
+			f'/api/v1/tickets/{active_ticket.id}/status/',
+			{'status': QueueStatus.WAITING},
+			**self.operator_headers(),
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		active_ticket.refresh_from_db()
+		self.assertEqual(active_ticket.status, QueueStatus.WAITING)
+		self.assertIsNone(active_ticket.called_at)
+		self.assertIsNone(active_ticket.service_started_at)
+		self.assertIsNone(active_ticket.finished_at)
+
+		waiting_order = list(
+			Ticket.objects.filter(queue=queue, status=QueueStatus.WAITING)
+			.order_by('enqueued_at', 'id')
+			.values_list('id', flat=True)
+		)
+		self.assertEqual(waiting_order, [waiting_ticket.id, active_ticket.id])
+
 	def test_queue_bulk_delete_tickets(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 4')
 		other_queue = Queue.objects.create(branch=self.branch, name='Окно 5')
+		self.assign_operator(queue)
 
 		t1 = Ticket.objects.create(
 			queue=queue,
@@ -512,6 +660,7 @@ class QueueTicketApiTests(APITestCase):
 
 	def test_invite_next_resets_called_timer_for_old_ticket(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 10')
+		self.assign_operator(queue)
 		ticket = Ticket.objects.create(
 			queue=queue,
 			client=self.client_obj,
@@ -541,6 +690,7 @@ class QueueTicketApiTests(APITestCase):
 
 	def test_reinvite_after_return_starts_called_timer_from_beginning(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 11')
+		self.assign_operator(queue)
 		ticket = Ticket.objects.create(
 			queue=queue,
 			client=self.client_obj,
@@ -577,6 +727,7 @@ class QueueTicketApiTests(APITestCase):
 
 	def test_remove_ticket_sets_removed_status_and_snapshot_flag(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 7')
+		self.assign_operator(queue)
 		ticket = Ticket.objects.create(
 			queue=queue,
 			client=self.client_obj,

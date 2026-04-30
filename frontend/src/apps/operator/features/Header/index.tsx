@@ -1,11 +1,22 @@
 import { SettingOutlined } from "@ant-design/icons";
 import { Button, Flex, Layout, Select, Typography } from "antd";
-
+import { operatorAuth } from "@apps/operator/helpers/auth";
 import { useOperatorLayoutContext } from "@apps/operator/features/Layout/context/useOperatorLayoutContext";
 import styles from "./Header.module.scss";
+import { useNavigate } from "react-router-dom";
 
 export const Header = () => {
   const { controller } = useOperatorLayoutContext();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await operatorAuth.logout();
+    } finally {
+      operatorAuth.clearToken();
+      navigate("/o/login", { replace: true });
+    }
+  };
 
   return (
     <Layout.Header className={styles.header}>
@@ -32,6 +43,9 @@ export const Header = () => {
           onClick={() => controller.setIsSettingsOpen(true)}
         >
           Настройки
+        </Button>
+        <Button danger onClick={handleLogout}>
+          Выйти
         </Button>
       </div>
     </Layout.Header>

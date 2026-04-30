@@ -1,13 +1,16 @@
 import { mutationOptions } from "@tanstack/react-query";
 import { queryClient, type MutationOptionsType } from "@shared/api";
 import type {
+  AdminBranch,
   AdminCompany,
+  AdminCreateBranchPayload,
   AdminCreateFeedbackPayload,
   AdminCreateOperatorPayload,
   AdminCreateQueuePayload,
   AdminFeedbackItem,
   AdminOperator,
   AdminQueue,
+  AdminUpdateBranchPayload,
   AdminUpdateCompanyPayload,
   AdminUpdateFeedbackPayload,
   AdminUpdateOperatorPayload,
@@ -23,6 +26,9 @@ export const adminMutationKeys = {
   createOperator: ["admin", "operator", "create"] as const,
   updateOperator: ["admin", "operator", "update"] as const,
   deleteOperator: ["admin", "operator", "delete"] as const,
+  createBranch: ["admin", "branch", "create"] as const,
+  updateBranch: ["admin", "branch", "update"] as const,
+  deleteBranch: ["admin", "branch", "delete"] as const,
   createQueue: ["admin", "queue", "create"] as const,
   updateQueue: ["admin", "queue", "update"] as const,
   deleteQueue: ["admin", "queue", "delete"] as const,
@@ -43,6 +49,11 @@ interface UpdateQueueVariables {
   payload: AdminUpdateQueuePayload;
 }
 
+interface UpdateBranchVariables {
+  id: number;
+  payload: AdminUpdateBranchPayload;
+}
+
 interface UpdateFeedbackVariables {
   id: number;
   payload: AdminUpdateFeedbackPayload;
@@ -56,143 +67,226 @@ interface UpdateCompanyVariables {
 export const adminMutationOptions = {
   createOperator: (
     options?: MutationOptionsType<AdminOperator, AdminCreateOperatorPayload>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.createOperator,
       mutationFn: (payload: AdminCreateOperatorPayload) =>
         adminApi.createOperator(payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.operators });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
   updateOperator: (
     options?: MutationOptionsType<AdminOperator, UpdateOperatorVariables>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.updateOperator,
       mutationFn: ({ id, payload }: UpdateOperatorVariables) =>
         adminApi.updateOperator(id, payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.operators });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
-  deleteOperator: (options?: MutationOptionsType<void, number>) =>
-    mutationOptions({
+  deleteOperator: (options?: MutationOptionsType<void, number>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.deleteOperator,
       mutationFn: (id: number) => adminApi.deleteOperator(id),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.operators });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
+
+  createBranch: (
+    options?: MutationOptionsType<AdminBranch, AdminCreateBranchPayload>,
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
+      mutationKey: adminMutationKeys.createBranch,
+      mutationFn: (payload: AdminCreateBranchPayload) =>
+        adminApi.createBranch(payload),
+      onSuccess: async (...args) => {
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.branches });
+        await onSuccess?.(...args);
+      },
+      ...rest,
+    });
+  },
+
+  updateBranch: (options?: MutationOptionsType<AdminBranch, UpdateBranchVariables>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
+      mutationKey: adminMutationKeys.updateBranch,
+      mutationFn: ({ id, payload }: UpdateBranchVariables) =>
+        adminApi.updateBranch(id, payload),
+      onSuccess: async (...args) => {
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.branches });
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.operators });
+        await onSuccess?.(...args);
+      },
+      ...rest,
+    });
+  },
+
+  deleteBranch: (options?: MutationOptionsType<void, number>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
+      mutationKey: adminMutationKeys.deleteBranch,
+      mutationFn: (id: number) => adminApi.deleteBranch(id),
+      onSuccess: async (...args) => {
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.branches });
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
+        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.operators });
+        await onSuccess?.(...args);
+      },
+      ...rest,
+    });
+  },
 
   createQueue: (
     options?: MutationOptionsType<AdminQueue, AdminCreateQueuePayload>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.createQueue,
       mutationFn: (payload: AdminCreateQueuePayload) => adminApi.createQueue(payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
-  updateQueue: (options?: MutationOptionsType<AdminQueue, UpdateQueueVariables>) =>
-    mutationOptions({
+  updateQueue: (options?: MutationOptionsType<AdminQueue, UpdateQueueVariables>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.updateQueue,
       mutationFn: ({ id, payload }: UpdateQueueVariables) =>
         adminApi.updateQueue(id, payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
-  deleteQueue: (options?: MutationOptionsType<void, number>) =>
-    mutationOptions({
+  deleteQueue: (options?: MutationOptionsType<void, number>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.deleteQueue,
       mutationFn: (id: number) => adminApi.deleteQueue(id),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
   createFeedback: (
     options?: MutationOptionsType<AdminFeedbackItem, AdminCreateFeedbackPayload>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.createFeedback,
       mutationFn: (payload: AdminCreateFeedbackPayload) =>
         adminApi.createFeedback(payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.feedback });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
   updateFeedback: (
     options?: MutationOptionsType<AdminFeedbackItem, UpdateFeedbackVariables>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.updateFeedback,
       mutationFn: ({ id, payload }: UpdateFeedbackVariables) =>
         adminApi.updateFeedback(id, payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.feedback });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
-  deleteFeedback: (options?: MutationOptionsType<void, number>) =>
-    mutationOptions({
+  deleteFeedback: (options?: MutationOptionsType<void, number>) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.deleteFeedback,
       mutationFn: (id: number) => adminApi.deleteFeedback(id),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.feedback });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
   updateCompany: (
     options?: MutationOptionsType<AdminCompany, UpdateCompanyVariables>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.updateCompany,
       mutationFn: ({ id, payload }: UpdateCompanyVariables) =>
         adminApi.updateCompany(id, payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.companies });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 
   updateAdminSettings: (
     options?: MutationOptionsType<AdminUpdateSettingsResponse, AdminUpdateSettingsPayload>,
-  ) =>
-    mutationOptions({
+  ) => {
+    const { onSuccess, ...rest } = options ?? {};
+
+    return mutationOptions({
       mutationKey: adminMutationKeys.updateAdminSettings,
       mutationFn: (payload: AdminUpdateSettingsPayload) =>
         adminApi.updateAdminSettings(payload),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.session });
-        await options?.onSuccess?.(...args);
+        await onSuccess?.(...args);
       },
-      ...options,
-    }),
+      ...rest,
+    });
+  },
 };

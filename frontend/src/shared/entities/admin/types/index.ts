@@ -17,6 +17,22 @@ export interface AdminBranch {
   updated_at: string;
 }
 
+export interface AdminCreateBranchPayload {
+  company: number;
+  name: string;
+  address: string;
+  is_active: boolean;
+  work_schedule_json: Record<string, unknown>;
+}
+
+export interface AdminUpdateBranchPayload {
+  company?: number;
+  name?: string;
+  address?: string;
+  is_active?: boolean;
+  work_schedule_json?: Record<string, unknown>;
+}
+
 export interface AdminQueue {
   id: number;
   branch: number | null;
@@ -80,6 +96,46 @@ export interface AdminMetrics {
     endpoint: string;
     requests: number;
   }>;
+  business: {
+    active_tickets: number;
+    waiting_tickets: number;
+    called_tickets: number;
+    in_service_tickets: number;
+    completed_tickets: number;
+    not_arrived_tickets: number;
+    left_tickets: number;
+    removed_tickets: number;
+    avg_wait_seconds: number;
+    avg_service_seconds: number;
+    queues: Array<{
+      queue_id: number;
+      queue_name: string;
+      branch_id: number | null;
+      branch_name: string | null;
+      active_tickets: number;
+      waiting_tickets: number;
+      called_tickets: number;
+      in_service_tickets: number;
+      completed_tickets: number;
+      not_arrived_tickets: number;
+      left_tickets: number;
+      removed_tickets: number;
+      avg_wait_seconds: number;
+      avg_service_seconds: number;
+    }>;
+    peak_hours: Array<{
+      hour: number;
+      tickets: number;
+    }>;
+    operators: Array<{
+      operator_id: number;
+      operator_name: string;
+      is_active: boolean;
+      queue_count: number;
+      waiting_tickets: number;
+      active_tickets: number;
+    }>;
+  };
 }
 
 export interface AdminQueueSnapshot {

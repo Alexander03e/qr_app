@@ -3,6 +3,7 @@ import { AdminDashboard } from "@apps/admin/features/Dashboard";
 import { AdminLogin } from "@apps/admin/features/Login";
 import { AdminPosterPage } from "@apps/admin/features/Poster";
 import {
+  BranchesPage,
   FeedbackPage,
   MetricsPage,
   OperatorsPage,
@@ -69,6 +70,7 @@ export const AdminApp = () => {
       >
         <Route index element={<Navigate replace to="operators" />} />
         <Route path="operators" element={<OperatorsPage />} />
+        <Route path="branches" element={<BranchesPage />} />
         <Route path="queues" element={<QueuesPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
         <Route path="metrics" element={<MetricsPage />} />

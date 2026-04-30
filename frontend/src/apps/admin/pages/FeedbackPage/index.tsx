@@ -16,6 +16,15 @@ export const FeedbackPage = () => {
   const { t } = useTranslation();
   const { dashboard, actions } = useAdminDashboardContext();
 
+  const branchNameById = useMemo(
+    () => new Map(dashboard.branches.map((branch) => [branch.id, branch.name])),
+    [dashboard.branches],
+  );
+  const queueNameById = useMemo(
+    () => new Map(dashboard.queues.map((queue) => [queue.id, queue.name])),
+    [dashboard.queues],
+  );
+
   const columns: ColumnsType<AdminFeedbackItem> = useMemo(
     () => [
       { title: "ID", dataIndex: "id", key: "id", width: 80 },
@@ -36,8 +45,18 @@ export const FeedbackPage = () => {
           <Tag color={feedbackStatusColors[value]}>{value}</Tag>
         ),
       },
-      { title: t("admin.feedback.branch"), dataIndex: "branch", key: "branch" },
-      { title: t("admin.feedback.queue"), dataIndex: "queue", key: "queue" },
+      {
+        title: t("admin.feedback.branch"),
+        dataIndex: "branch",
+        key: "branch",
+        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+      },
+      {
+        title: t("admin.feedback.queue"),
+        dataIndex: "queue",
+        key: "queue",
+        render: (value: number | null) => (value ? queueNameById.get(value) ?? value : "-"),
+      },
       {
         title: t("admin.common.actions"),
         key: "actions",
@@ -62,7 +81,7 @@ export const FeedbackPage = () => {
         ),
       },
     ],
-    [actions, dashboard, t],
+    [actions, branchNameById, dashboard, queueNameById, t],
   );
 
   return (

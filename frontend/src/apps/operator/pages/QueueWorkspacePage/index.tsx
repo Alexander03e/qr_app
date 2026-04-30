@@ -20,8 +20,12 @@ export const QueueWorkspacePage = () => {
 
   return (
     <div className={styles.grid}>
-      <TicketsList />
-      <Controls />
+      <div className={styles.left}>
+        <TicketsList />
+      </div>
+      <div className={styles.center}>
+        <Controls />
+      </div>
       <div className={styles.rightColumn}>
         <QrCode />
       </div>

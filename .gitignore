@@ -1,3 +1,21 @@
-*.md
+
 venv
 .venv
+
+!requirements/*.md
+
+# LaTeX build artifacts
+template_xelatex/*.aux
+template_xelatex/*.bbl
+template_xelatex/*.blg
+template_xelatex/*.fdb_latexmk
+template_xelatex/*.fls
+template_xelatex/*.log
+template_xelatex/*.out
+template_xelatex/*.toc
+template_xelatex/*.xdv
+template_xelatex/_minted/
+
+*
+!/frontend/*
+!/backend/*

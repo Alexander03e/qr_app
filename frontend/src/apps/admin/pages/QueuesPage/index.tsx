@@ -16,11 +16,21 @@ export const QueuesPage = () => {
   const { t } = useTranslation();
   const { dashboard, actions } = useAdminDashboardContext();
 
+  const branchNameById = useMemo(
+    () => new Map(dashboard.branches.map((branch) => [branch.id, branch.name])),
+    [dashboard.branches],
+  );
+
   const columns: ColumnsType<AdminQueue> = useMemo(
     () => [
       { title: "ID", dataIndex: "id", key: "id", width: 80 },
       { title: t("admin.queues.name"), dataIndex: "name", key: "name" },
-      { title: t("admin.queues.branch"), dataIndex: "branch", key: "branch" },
+      {
+        title: t("admin.queues.branch"),
+        dataIndex: "branch",
+        key: "branch",
+        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+      },
       {
         title: "Язык",
         dataIndex: "language",
@@ -87,7 +97,7 @@ export const QueuesPage = () => {
         ),
       },
     ],
-    [actions, dashboard, t],
+    [actions, branchNameById, dashboard, t],
   );
 
   return (

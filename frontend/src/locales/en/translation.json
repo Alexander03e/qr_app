@@ -13,7 +13,15 @@
       "youAreNext": "you are next",
       "skipOneAhead": "Let one person ahead",
       "yourTicket": "your turn",
+      "inService": "in service",
       "timeLeft": "Time left: {{time}}",
+      "estimatedWait": "Estimated wait: {{time}}",
+      "lessThanMinute": "less than a minute",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "currentTicket": "Now",
+      "noCurrentTicket": "no active call",
+      "waitingTotal": "Waiting",
       "leaveQueue": "Leave queue",
       "leaveQueueError": "Failed to leave queue"
     },
@@ -25,13 +33,33 @@
     },
     "leftPage": {
       "title": "You left the queue",
+      "completedTitle": "Service completed",
       "description": "You can join once again using the button below",
+      "completedDescription": "Thanks for visiting. You can join once again if needed.",
       "returnButton": "Rejoin queue"
     },
     "missedPage": {
       "title": "You did not arrive in time",
       "description": "Call timer is over, your ticket was removed from queue. You can join again.",
       "returnButton": "Rejoin queue"
+    },
+    "feedback": {
+      "title": "Feedback",
+      "type": "Request type",
+      "types": {
+        "FEEDBACK": "Feedback",
+        "COMPLAINT": "Complaint"
+      },
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your waiting or service experience",
+      "messageRequired": "Enter a message",
+      "submit": "Send",
+      "success": "Request sent",
+      "done": "Thank you, the request has been sent to the administrator.",
+      "generatedTitle": {
+        "completed": "Feedback after service",
+        "left": "Request after leaving queue"
+      }
     }
   },
   "operator": {
@@ -42,7 +70,34 @@
       "submit": "Sign in",
       "invalid": "Invalid credentials"
     },
+    "status": {
+      "IDLE": "No active ticket",
+      "WAITING": "Waiting",
+      "CALLED": "Called",
+      "IN_SERVICE": "In service",
+      "COMPLETED": "Completed",
+      "SKIPPED": "Skipped",
+      "LEFT": "Client left",
+      "NOT_ARRIVED": "No-show",
+      "REMOVED": "Removed"
+    },
+    "controls": {
+      "emptyTicket": "No active \nticket",
+      "waitingCount": "Waiting: {{count}}",
+      "readyForNext": "Workspace is free",
+      "next": "Next",
+      "startService": "Start service",
+      "completeService": "Complete service",
+      "notArrived": "No-show",
+      "returnToQueue": "Return to queue",
+      "removeCurrent": "Remove ticket",
+      "removeConfirmTitle": "Remove current ticket?",
+      "removeConfirmOk": "Remove",
+      "removeConfirmCancel": "Cancel"
+    },
     "tickets": {
+      "waitingCount": "Total waiting: {{count}}",
+      "empty": "No waiting tickets",
       "invite": "Invite",
       "remove": "Remove",
       "needActionTitle": "Current ticket exists",
@@ -92,10 +147,13 @@
     },
     "branches": {
       "add": "Add branch",
+      "edit": "Edit branch",
       "company": "Company",
       "name": "Name",
       "address": "Address",
-      "status": "Status"
+      "status": "Status",
+      "schedule": "Work schedule JSON",
+      "scheduleError": "Enter a valid JSON object"
     },
     "queues": {
       "add": "Add queue",
@@ -136,6 +194,22 @@
       "totalRequests": "Total requests",
       "errorRequests": "Error requests",
       "avgLatency": "Average latency",
+      "activeTickets": "Active tickets",
+      "completed": "Completed",
+      "notArrived": "No-shows",
+      "leftTickets": "Left queue",
+      "avgWait": "Average wait",
+      "avgService": "Average service",
+      "queueReport": "Queue report",
+      "operatorReport": "Operator load",
+      "peakHours": "Peak hours",
+      "technicalReport": "Technical API metrics",
+      "queue": "Queue",
+      "branch": "Branch",
+      "waiting": "Waiting",
+      "operator": "Operator",
+      "hour": "Hour",
+      "tickets": "Tickets",
       "method": "Method",
       "endpoint": "Endpoint",
       "requests": "Requests"
@@ -151,6 +225,8 @@
       "companyCreated": "Company created",
       "companyUpdated": "Company updated",
       "branchCreated": "Branch created",
+      "branchUpdated": "Branch updated",
+      "branchDeleted": "Branch deleted",
       "queueCreated": "Queue created",
       "operatorCreated": "Operator created",
       "operatorUpdated": "Operator updated",

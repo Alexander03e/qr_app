@@ -29,15 +29,52 @@
         color: var(--success-color);
         font-weight: 700;
     }
+
+    .estimatedWait {
+        max-width: 210px;
+        color: var(--primary-color);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.25;
+        text-align: center;
+    }
+}
+
+.queueMeta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+
+    & > div {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--primary-color-mask-10);
+        border-radius: 8px;
+    }
 }
 
 .bottom {
     max-width: 300px;
     margin-inline: auto;
-    // background: var(--primary-color-mask-10);
     border-radius: 16px;
     display: flex;
     flex-direction: column;
     width: 100%;
     gap: 8px;
+}
+
+@media (max-width: 380px) {
+    .top {
+        .title {
+            font-size: 34px;
+        }
+    }
+
+    .queueMeta {
+        grid-template-columns: 1fr;
+    }
 }

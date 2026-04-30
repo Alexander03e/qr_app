@@ -2,6 +2,7 @@ import { $api } from "@shared/api/axios";
 import type {
   AdminBranch,
   AdminCompany,
+  AdminCreateBranchPayload,
   AdminCreateFeedbackPayload,
   AdminCreateOperatorPayload,
   AdminCreateQueuePayload,
@@ -10,6 +11,7 @@ import type {
   AdminOperator,
   AdminQueue,
   AdminQueueSnapshot,
+  AdminUpdateBranchPayload,
   AdminUpdateCompanyPayload,
   AdminUpdateFeedbackPayload,
   AdminUpdateOperatorPayload,
@@ -36,6 +38,21 @@ class AdminApi {
         params: company ? { company } : undefined,
       })
     ).data;
+  }
+
+  async createBranch(payload: AdminCreateBranchPayload): Promise<AdminBranch> {
+    return (await $api.post("/admin/branches/", payload)).data;
+  }
+
+  async updateBranch(
+    branchId: number,
+    payload: AdminUpdateBranchPayload,
+  ): Promise<AdminBranch> {
+    return (await $api.patch(`/admin/branches/${branchId}/`, payload)).data;
+  }
+
+  async deleteBranch(branchId: number): Promise<void> {
+    await $api.delete(`/admin/branches/${branchId}/`);
   }
 
   async getQueues(branch?: number): Promise<AdminQueue[]> {

@@ -1,4 +1,9 @@
-import type { AdminFeedbackItem, AdminOperator, AdminQueue } from "@shared/entities/admin/types";
+import type {
+  AdminBranch,
+  AdminFeedbackItem,
+  AdminOperator,
+  AdminQueue,
+} from "@shared/entities/admin/types";
 import { adminAuth } from "@apps/admin/helpers/auth";
 import { makeRequest } from "@shared/helper/handler";
 import { useCallback } from "react";
@@ -7,6 +12,7 @@ import type { NavigateFunction } from "react-router-dom";
 import { useAdminDashboardController } from "./useAdminDashboardController";
 import type {
   AdminSettingsFormValues,
+  BranchFormValues,
   CompanyFormValues,
   FeedbackFormValues,
   OperatorFormValues,
@@ -54,6 +60,30 @@ export const useAdminDashboardActions = ({
     dashboard.operatorForm.setFieldValue("queue_ids", []);
     dashboard.setOperatorModalOpen(true);
   }, [dashboard]);
+
+  const openCreateBranch = useCallback(() => {
+    dashboard.setEditingBranch(null);
+    dashboard.branchForm.resetFields();
+    dashboard.branchForm.setFieldsValue({
+      is_active: true,
+      work_schedule_text: "{}",
+    });
+    dashboard.setBranchModalOpen(true);
+  }, [dashboard]);
+
+  const openEditBranch = useCallback(
+    (branch: AdminBranch) => {
+      dashboard.setEditingBranch(branch);
+      dashboard.branchForm.setFieldsValue({
+        name: branch.name,
+        address: branch.address,
+        is_active: branch.is_active,
+        work_schedule_text: JSON.stringify(branch.work_schedule_json ?? {}, null, 2),
+      });
+      dashboard.setBranchModalOpen(true);
+    },
+    [dashboard],
+  );
 
   const openEditOperator = useCallback(
     (operator: AdminOperator) => {
@@ -169,6 +199,46 @@ export const useAdminDashboardActions = ({
           preferred_language: values.preferred_language,
           queue_ids: values.queue_ids ?? [],
           is_active: values.is_active,
+        }),
+      );
+    },
+    [dashboard],
+  );
+
+  const submitBranch = useCallback(
+    async (values: BranchFormValues) => {
+      const company = dashboard.companies[0];
+      if (!company) {
+        return;
+      }
+
+      const workSchedule = values.work_schedule_text
+        ? JSON.parse(values.work_schedule_text)
+        : {};
+
+      if (dashboard.editingBranch) {
+        await makeRequest(
+          dashboard.updateBranchMutation.mutateAsync({
+            id: dashboard.editingBranch.id,
+            payload: {
+              company: company.id,
+              name: values.name,
+              address: values.address,
+              is_active: values.is_active,
+              work_schedule_json: workSchedule,
+            },
+          }),
+        );
+        return;
+      }
+
+      await makeRequest(
+        dashboard.createBranchMutation.mutateAsync({
+          company: company.id,
+          name: values.name,
+          address: values.address,
+          is_active: values.is_active,
+          work_schedule_json: workSchedule,
         }),
       );
     },
@@ -327,6 +397,8 @@ export const useAdminDashboardActions = ({
     companyName,
     onLogout,
     onPreferredLanguageChange,
+    openCreateBranch,
+    openEditBranch,
     openCreateOperator,
     openEditOperator,
     openCreateQueue,
@@ -335,6 +407,7 @@ export const useAdminDashboardActions = ({
     openEditFeedback,
     openQueueDetails,
     closeQueueDetails,
+    submitBranch,
     submitOperator,
     submitQueue,
     submitFeedback,

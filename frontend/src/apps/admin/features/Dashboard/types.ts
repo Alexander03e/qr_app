@@ -25,6 +25,13 @@ export interface QueueFormValues {
   queue_url?: string;
 }
 
+export interface BranchFormValues {
+  name: string;
+  address: string;
+  is_active: boolean;
+  work_schedule_text?: string;
+}
+
 export interface FeedbackFormValues {
   branch?: number;
   queue?: number;

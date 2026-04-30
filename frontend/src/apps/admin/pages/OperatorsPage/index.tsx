@@ -22,6 +22,11 @@ export const OperatorsPage = () => {
   const { t } = useTranslation();
   const { dashboard, actions } = useAdminDashboardContext();
 
+  const branchNameById = useMemo(
+    () => new Map(dashboard.branches.map((branch) => [branch.id, branch.name])),
+    [dashboard.branches],
+  );
+
   const columns: ColumnsType<AdminOperator> = useMemo(
     () => [
       { title: "ID", dataIndex: "id", key: "id", width: 80 },
@@ -31,6 +36,12 @@ export const OperatorsPage = () => {
         key: "fullname",
       },
       { title: t("admin.operators.email"), dataIndex: "email", key: "email" },
+      {
+        title: t("admin.operators.branch"),
+        dataIndex: "branch",
+        key: "branch",
+        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+      },
       {
         title: "Очереди",
         key: "queues",
@@ -92,7 +103,7 @@ export const OperatorsPage = () => {
         ),
       },
     ],
-    [actions, dashboard, t],
+    [actions, branchNameById, dashboard, t],
   );
 
   return (

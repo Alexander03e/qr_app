@@ -1,91 +1,125 @@
-import { useOperatorQueue } from "@apps/operator/store";
 import styles from "./Controls.module.scss";
-import { Button, Typography } from "antd";
-import { useMutation } from "@tanstack/react-query";
-import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
-import { TICKET_STATUS } from "@shared/entities/queue/types/enum";
-import { operatorAuth } from "@apps/operator/helpers/auth";
-import { useNavigate } from "react-router-dom";
-import { DoubleRightOutlined, RollbackOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Typography } from "antd";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  DoubleRightOutlined,
+  PlayCircleOutlined,
+  RollbackOutlined,
+} from "@ant-design/icons";
 import { Circle } from "@shared/components/Circle";
 import cn from "classnames";
+import { useTranslation } from "react-i18next";
+import { useOperatorTicketActions } from "./hooks/useOperatorTicketActions";
+
 export const Controls = () => {
-  const navigate = useNavigate();
-  const { queueData, queueId, setQueue } = useOperatorQueue();
-
-  const { mutate: inviteNext } = useMutation(
-    queueMutationOptions.inviteNext({
-      onSuccess: (data) => {
-        setQueue(data.queue_snapshot);
-      },
-    }),
-  );
-
-  const { mutate: updateStatus } = useMutation(
-    queueMutationOptions.updateTicketStatus({
-      onSuccess: (data) => {
-        setQueue(data.queue_snapshot);
-      },
-    }),
-  );
-
-  const handleNext = () => {
-    if (!queueId) return;
-
-    inviteNext(queueId);
-  };
-
-  const handleReturnToQueue = () => {
-    if (!queueId || !queueData?.current_ticket) return;
-
-    updateStatus({
-      ticketId: queueData.current_ticket.id,
-      status: TICKET_STATUS.WAITING,
-    });
-  };
-
-  const handleLogout = async () => {
-    try {
-      await operatorAuth.logout();
-    } finally {
-      operatorAuth.clearToken();
-      navigate("/o/login", { replace: true });
-    }
-  };
+  const { t } = useTranslation();
+  const actions = useOperatorTicketActions();
 
   return (
     <div className={styles.container}>
       <Circle
-        title={
-          <Typography.Title
-            className={cn(styles.currentTicketTitle, {
-              [styles.noActiveTicket]: !queueData?.current_ticket,
-            })}
-            level={3}
-          >
-            {queueData?.current_ticket?.display_number ||
-              "Нет активного \nталона"}
-          </Typography.Title>
-        }
+        className={styles.ticketCircle}
+        contentClassName={styles.currentTicketContent}
         isProgress={false}
         progressProps={{ percent: 100 }}
-      />
-      <div className={styles.controls}>
-        {queueData?.current_ticket && (
-          <Button onClick={handleReturnToQueue} icon={<RollbackOutlined />}>
-            Вернуть в очередь
-          </Button>
-        )}
-        <Button
-          variant="filled"
-          type="primary"
-          onClick={handleNext}
-          icon={<DoubleRightOutlined />}
+      >
+        <Typography.Title
+          className={cn(styles.currentTicketTitle, {
+            [styles.noActiveTicket]: !actions.currentTicket,
+          })}
+          level={2}
         >
-          Следующий
-        </Button>
-        <Button danger onClick={handleLogout}>
-          Выйти
+          {actions.currentTicket?.display_number ||
+            t("operator.controls.emptyTicket")}
+        </Typography.Title>
+      </Circle>
+
+      <div className={styles.controls}>
+        {actions.currentTicket && (
+          <div className={styles.lifecycleActions}>
+            {actions.canStartService && (
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                loading={actions.pendingAction === "start"}
+                disabled={actions.isBusy}
+                onClick={() => actions.startService()}
+              >
+                {t("operator.controls.startService")}
+              </Button>
+            )}
+
+            {actions.canCompleteService && (
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                loading={actions.pendingAction === "complete"}
+                disabled={actions.isBusy}
+                onClick={() => actions.completeService()}
+              >
+                {t("operator.controls.completeService")}
+              </Button>
+            )}
+
+            {actions.canMarkNotArrived && (
+              <Button
+                danger
+                icon={<CloseCircleOutlined />}
+                loading={actions.pendingAction === "notArrived"}
+                disabled={actions.isBusy}
+                onClick={() => actions.markNotArrived()}
+              >
+                {t("operator.controls.notArrived")}
+              </Button>
+            )}
+
+            {actions.canReturnToQueue && (
+              <Button
+                icon={<RollbackOutlined />}
+                loading={actions.pendingAction === "return"}
+                disabled={actions.isBusy}
+                onClick={() => actions.returnToQueue()}
+              >
+                {t("operator.controls.returnToQueue")}
+              </Button>
+            )}
+
+            {actions.canRemoveCurrent && (
+              <Popconfirm
+                title={t("operator.controls.removeConfirmTitle")}
+                okText={t("operator.controls.removeConfirmOk")}
+                cancelText={t("operator.controls.removeConfirmCancel")}
+                onConfirm={() => actions.removeCurrent()}
+              >
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={actions.pendingAction === "remove"}
+                  disabled={actions.isBusy}
+                >
+                  {t("operator.controls.removeCurrent")}
+                </Button>
+              </Popconfirm>
+            )}
+          </div>
+        )}
+
+        {!actions.currentTicket && (
+          <Typography.Title level={5} className={styles.readyTitle}>
+            {t("operator.controls.readyForNext")}
+          </Typography.Title>
+        )}
+
+        <Button
+          type="primary"
+          icon={<DoubleRightOutlined />}
+          loading={actions.pendingAction === "next"}
+          disabled={!actions.canInviteNext || actions.isBusy}
+          onClick={() => actions.inviteNext()}
+        >
+          {t("operator.controls.next")}
         </Button>
       </div>
     </div>

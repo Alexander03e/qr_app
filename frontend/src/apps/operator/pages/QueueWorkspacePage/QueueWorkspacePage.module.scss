@@ -2,6 +2,21 @@
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   gap: 16px;
+  height: 100%;
+
+  .left {
+    display: flex;
+    height: 50%;
+    width: 100%;
+    max-width: 280px;
+    align-self: flex-end;
+  };
+
+  .center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 }
 
 .rightColumn {

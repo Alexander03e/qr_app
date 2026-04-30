@@ -1,11 +1,10 @@
 from rest_framework import mixins, viewsets
 from rest_framework import status as drf_status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import AuthenticationFailed, NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 
-from companies.models import Branch
 from queues.services import (
     append_to_queue,
     delete_tickets_from_queue,
@@ -39,19 +38,12 @@ def require_operator(request):
 
 def require_operator_for_queue(request, queue_id: int):
     operator = require_operator(request)
-    has_explicit_assignments = operator.assigned_queues.exists()
-    if has_explicit_assignments:
-        if not operator.assigned_queues.filter(id=queue_id).exists():
-            raise ValidationError('Оператор не назначен на эту очередь.')
-        return operator
+    queue_exists = Queue.objects.filter(id=queue_id).exists()
+    if not queue_exists:
+        raise NotFound('Очередь не найдена.')
 
-    queue = Queue.objects.select_related('branch').filter(id=queue_id).first()
-    if queue is None:
-        raise ValidationError('Очередь не найдена.')
-
-    if operator.branch_id and queue.branch_id != operator.branch_id:
-        raise ValidationError('Оператор не назначен на эту очередь.')
-
+    if not operator.assigned_queues.filter(id=queue_id).exists():
+        raise PermissionDenied('Оператор не назначен на эту очередь.')
     return operator
 
 
@@ -60,21 +52,15 @@ def require_operator_for_ticket(request, ticket_id: int):
     try:
         ticket = Ticket.objects.select_related('queue').get(pk=ticket_id)
     except Ticket.DoesNotExist as exc:
-        raise ValidationError('Талон не найден.') from exc
+        raise NotFound('Талон не найден.') from exc
 
-    has_explicit_assignments = operator.assigned_queues.exists()
-    if has_explicit_assignments:
-        if not operator.assigned_queues.filter(id=ticket.queue_id).exists():
-            raise ValidationError('Оператор не назначен на эту очередь.')
-        return operator
-
-    if operator.branch_id and ticket.queue.branch_id != operator.branch_id:
-        raise ValidationError('Оператор не назначен на эту очередь.')
+    if not operator.assigned_queues.filter(id=ticket.queue_id).exists():
+        raise PermissionDenied('Оператор не назначен на эту очередь.')
 
     return operator
 
 
-class QueueViewSet(viewsets.ModelViewSet):
+class QueueViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Queue.objects.all()
     serializer_class = QueueSerializer
 
@@ -186,6 +172,22 @@ class AdminQueueViewSet(viewsets.ModelViewSet):
 
         serializer.save()
 
+    def perform_update(self, serializer):
+        admin_user = self._require_admin()
+        instance = self.get_object()
+        branch = serializer.validated_data.get('branch')
+
+        if not admin_user.company_id:
+            raise ValidationError('Администратор должен быть привязан к компании.')
+
+        if instance.branch and instance.branch.company_id != admin_user.company_id:
+            raise ValidationError('Недостаточно прав для редактирования очереди.')
+
+        if branch and branch.company_id != admin_user.company_id:
+            raise ValidationError('Нельзя переносить очередь в чужой филиал.')
+
+        serializer.save()
+
 
 class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Queue.objects.select_related('branch').all().order_by('id')
@@ -211,22 +213,6 @@ class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
         serializer.save()
         return Response(serializer.data, status=drf_status.HTTP_200_OK)
 
-    def perform_update(self, serializer):
-        admin_user = self._require_admin()
-        instance = self.get_object()
-        branch = serializer.validated_data.get('branch')
-
-        if not admin_user.company_id:
-            raise ValidationError('Администратор должен быть привязан к компании.')
-
-        if instance.branch and instance.branch.company_id != admin_user.company_id:
-            raise ValidationError('Недостаточно прав для редактирования очереди.')
-
-        if branch and branch.company_id != admin_user.company_id:
-            raise ValidationError('Нельзя переносить очередь в чужой филиал.')
-
-        serializer.save()
-
 class TicketViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -235,8 +221,24 @@ class TicketViewSet(
     queryset = Ticket.objects.select_related('queue', 'client').all()
     serializer_class = TicketSerializer
 
+    def _staff_queryset(self, queryset):
+        token = parse_bearer_token(self.request.headers.get('Authorization'))
+        if not token:
+            raise AuthenticationFailed('Требуется токен сотрудника.')
+
+        try:
+            operator = get_operator_by_token(token)
+        except AuthenticationFailed:
+            admin_user = get_admin_by_token(token)
+            return queryset.filter(queue__branch__company_id=admin_user.company_id)
+
+        return queryset.filter(queue_id__in=operator.assigned_queues.values('id'))
+
     def get_queryset(self):
         queryset = super().get_queryset()
+        if self.action in {'list', 'retrieve'}:
+            queryset = self._staff_queryset(queryset)
+
         queue_id = self.request.query_params.get('queue')
 
         if queue_id:

@@ -98,6 +98,7 @@ class QueueSnapshotSerializer(serializers.Serializer):
     client_is_not_arrived = serializers.BooleanField()
     client_called_remaining_seconds = serializers.IntegerField(allow_null=True)
     called_ticket_timeout_seconds = serializers.IntegerField()
+    estimated_wait_seconds = serializers.IntegerField(allow_null=True)
 
 
 class InviteTicketByIdSerializer(serializers.Serializer):
@@ -111,5 +112,4 @@ class AdminQueueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Queue
         fields = '__all__'
-
 

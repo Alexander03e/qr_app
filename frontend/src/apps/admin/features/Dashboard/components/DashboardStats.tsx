@@ -17,12 +17,16 @@ export const DashboardStats = () => {
         value={dashboard.queues.length}
       />
       <Statistic
+        title={t("admin.stats.branches")}
+        value={dashboard.branches.length}
+      />
+      <Statistic
         title={t("admin.stats.feedback")}
         value={dashboard.feedback.length}
       />
       <Statistic
-        title={t("admin.metrics.totalRequests")}
-        value={dashboard.metrics?.total_requests ?? 0}
+        title={t("admin.metrics.activeTickets")}
+        value={dashboard.metrics?.business.active_tickets ?? 0}
       />
     </Space>
   );
