@@ -1,4 +1,4 @@
-import { Form, Input, Modal, Select } from "antd";
+import { Form, Input, InputNumber, Modal, Rate, Select } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { useAdminDashboardContext } from "../../context/useAdminDashboardContext";
@@ -69,6 +69,9 @@ export const FeedbackModal = () => {
         >
           <Input.TextArea rows={4} />
         </Form.Item>
+        <Form.Item name="rating" label={t("admin.feedback.rating")}>
+          <Rate allowClear />
+        </Form.Item>
         <Form.Item name="branch" label={t("admin.feedback.branch")}>
           <Select
             allowClear
@@ -86,6 +89,9 @@ export const FeedbackModal = () => {
               value: item.id,
             }))}
           />
+        </Form.Item>
+        <Form.Item name="ticket" label={t("admin.feedback.ticket")}>
+          <InputNumber min={1} style={{ width: "100%" }} />
         </Form.Item>
       </Form>
     </Modal>

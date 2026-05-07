@@ -10,6 +10,7 @@ import {
   writeQueueSession,
   getOrCreateDeviceId,
   getOrCreateQueueToken,
+  readQueueSession,
 } from "@apps/client/helpers";
 import { makeRequest } from "@shared/helper/handler";
 import { FeedbackForm } from "@apps/client/features";
@@ -31,6 +32,7 @@ export const LeftPage = () => {
 
   const deviceId = useMemo(() => getOrCreateDeviceId(), []);
   const queueToken = useMemo(() => getOrCreateQueueToken(), []);
+  const finishedTicketId = useMemo(() => readQueueSession()?.ticketId ?? null, []);
   const resolvedClientId = clientId || queueToken;
 
   const { mutateAsync: joinQueue, isPending } = useMutation(
@@ -89,6 +91,7 @@ export const LeftPage = () => {
       {queueId ? (
         <FeedbackForm
           queueId={Number(queueId)}
+          ticketId={finishedTicketId}
           origin={isServed ? "completed" : "left"}
         />
       ) : null}

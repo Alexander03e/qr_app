@@ -38,6 +38,14 @@ class Queue(models.Model):
 class Ticket(models.Model):
     queue = models.ForeignKey(Queue, on_delete=models.CASCADE, related_name='tickets', verbose_name='Очередь')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, verbose_name='Клиент')
+    operator = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processed_tickets',
+        verbose_name='Ответственный оператор',
+    )
     status = models.CharField(max_length=20, choices=QueueStatus.choices, default=QueueStatus.WAITING, verbose_name='Статус')
     display_number = models.CharField(max_length=20, verbose_name='Показанный номер')
     initial_ticket_number = models.PositiveIntegerField(null=True, blank=True, verbose_name='Изначальный номер в очереди')

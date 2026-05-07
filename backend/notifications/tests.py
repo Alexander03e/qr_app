@@ -6,7 +6,8 @@ from rest_framework.test import APITestCase
 
 from companies.models import Branch, Company
 from notifications.models import FeedbackItem, FeedbackStatus, FeedbackType
-from queues.models import Queue
+from clients.models import Client
+from queues.models import Queue, QueueStatus, Ticket
 from users.models import AdminToken, Role, User
 
 
@@ -21,6 +22,13 @@ class AdminFeedbackApiTests(APITestCase):
 			work_schedule_json={},
 		)
 		self.queue = Queue.objects.create(branch=self.branch, name='Касса 1')
+		self.client_obj = Client.objects.create(name='Client', branch_id=str(self.branch.id))
+		self.ticket = Ticket.objects.create(
+			queue=self.queue,
+			client=self.client_obj,
+			status=QueueStatus.COMPLETED,
+			display_number='Q1-0001',
+		)
 		self.admin = User.objects.create(
 			fullname='Admin One',
 			email='admin-feedback@example.com',
@@ -43,8 +51,10 @@ class AdminFeedbackApiTests(APITestCase):
 			{
 				'queue_id': self.queue.id,
 				'type': FeedbackType.COMPLAINT,
+				'ticket_id': self.ticket.id,
 				'title': 'Долгое ожидание',
 				'message': 'Хочу сообщить о задержке.',
+				'rating': 2,
 			},
 			format='json',
 		)
@@ -54,6 +64,8 @@ class AdminFeedbackApiTests(APITestCase):
 		self.assertEqual(feedback_item.company_id, self.company.id)
 		self.assertEqual(feedback_item.branch_id, self.branch.id)
 		self.assertEqual(feedback_item.queue_id, self.queue.id)
+		self.assertEqual(feedback_item.ticket_id, self.ticket.id)
+		self.assertEqual(feedback_item.rating, 2)
 		self.assertEqual(feedback_item.status, FeedbackStatus.NEW)
 
 	def test_admin_can_create_and_resolve_feedback(self):

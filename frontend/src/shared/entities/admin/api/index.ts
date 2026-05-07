@@ -8,6 +8,7 @@ import type {
   AdminCreateQueuePayload,
   AdminFeedbackItem,
   AdminMetrics,
+  AdminMetricsFilters,
   AdminOperator,
   AdminQueue,
   AdminQueueSnapshot,
@@ -129,8 +130,12 @@ class AdminApi {
     await $api.delete(`/admin/feedback/${feedbackId}/`);
   }
 
-  async getMetrics(): Promise<AdminMetrics> {
-    return (await $api.get("/admin/metrics/")).data;
+  async getMetrics(filters?: AdminMetricsFilters): Promise<AdminMetrics> {
+    return (
+      await $api.get("/admin/metrics/", {
+        params: filters,
+      })
+    ).data;
   }
 
   async getQueueSnapshot(queueId: number): Promise<AdminQueueSnapshot> {

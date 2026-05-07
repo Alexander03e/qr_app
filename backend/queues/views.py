@@ -84,8 +84,8 @@ class QueueViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     )
     @action(detail=True, methods=['post'], url_path='invite-next')
     def invite_next(self, request, pk=None):
-        require_operator_for_queue(request, int(pk))
-        ticket = invite_next_ticket(queue_id=pk)
+        operator = require_operator_for_queue(request, int(pk))
+        ticket = invite_next_ticket(queue_id=pk, operator=operator)
         snapshot = get_queue_snapshot(queue_id=pk)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)
 
@@ -282,12 +282,14 @@ class TicketViewSet(
         input_serializer.is_valid(raise_exception=True)
 
         new_status = input_serializer.validated_data['status']
+        operator = None
         if new_status != 'LEFT':
-            require_operator_for_ticket(request, int(pk))
+            operator = require_operator_for_ticket(request, int(pk))
 
         ticket = update_ticket(
             ticket_id=pk,
             new_status=new_status,
+            operator=operator,
         )
 
         snapshot = get_queue_snapshot(queue_id=ticket.queue_id)
@@ -366,13 +368,14 @@ class TicketViewSet(
     )
     @action(detail=True, methods=['post'], url_path='invite')
     def invite(self, request, pk=None):
-        require_operator_for_ticket(request, int(pk))
+        operator = require_operator_for_ticket(request, int(pk))
         input_serializer = InviteTicketByIdSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
         ticket = invite_ticket_by_id(
             ticket_id=pk,
             action=input_serializer.validated_data.get('action'),
+            operator=operator,
         )
         snapshot = get_queue_snapshot(queue_id=ticket.queue_id)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)
@@ -398,8 +401,8 @@ class TicketViewSet(
     )
     @action(detail=True, methods=['post'], url_path='remove')
     def remove(self, request, pk=None):
-        require_operator_for_ticket(request, int(pk))
-        ticket = remove_ticket_from_queue(ticket_id=pk)
+        operator = require_operator_for_ticket(request, int(pk))
+        ticket = remove_ticket_from_queue(ticket_id=pk, operator=operator)
         snapshot = get_queue_snapshot(queue_id=ticket.queue_id)
         snapshot_serializer = QueueSnapshotSerializer(snapshot)
 

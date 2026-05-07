@@ -336,6 +336,7 @@ class QueueTicketApiTests(APITestCase):
 		self.assertIn('ticket', response.data)
 		self.assertIn('queue_snapshot', response.data)
 		self.assertEqual(response.data['ticket']['status'], QueueStatus.CALLED)
+		self.assertEqual(response.data['ticket']['operator'], self.operator.id)
 		self.assertEqual(response.data['queue_snapshot']['queue_id'], queue.id)
 
 	def test_status_update_allows_client_leave_without_operator_token(self):
@@ -457,6 +458,7 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(in_service_ticket.status, QueueStatus.COMPLETED)
 		self.assertEqual(called_ticket.status, QueueStatus.SKIPPED)
 		self.assertEqual(waiting_ticket.status, QueueStatus.CALLED)
+		self.assertEqual(waiting_ticket.operator_id, self.operator.id)
 
 	def test_append_to_queue_moves_active_ticket_to_end(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 3')

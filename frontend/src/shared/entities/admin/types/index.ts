@@ -76,9 +76,11 @@ export interface AdminFeedbackItem {
   company: number;
   branch: number | null;
   queue: number | null;
+  ticket: number | null;
   type: FeedbackType;
   title: string;
   message: string;
+  rating: number | null;
   status: FeedbackStatus;
   resolved_by_user: number | null;
   resolved_at: string | null;
@@ -90,38 +92,114 @@ export interface AdminMetrics {
   company_id: number;
   total_requests: number;
   error_requests: number;
+  error_rate_percent: number;
   avg_latency_ms: number;
   endpoints: Array<{
     method: string;
     endpoint: string;
     requests: number;
+    error_requests: number;
+    error_rate_percent: number;
+    avg_latency_ms: number;
   }>;
   business: {
+    total_tickets: number;
     active_tickets: number;
+    processed_tickets: number;
     waiting_tickets: number;
     called_tickets: number;
     in_service_tickets: number;
     completed_tickets: number;
+    skipped_tickets: number;
     not_arrived_tickets: number;
     left_tickets: number;
     removed_tickets: number;
     avg_wait_seconds: number;
+    max_wait_seconds: number;
     avg_service_seconds: number;
+    avg_initial_queue_position: number;
+    sla_wait_under_10_min_percent: number;
+    completion_rate_percent: number;
+    left_rate_percent: number;
+    not_arrived_rate_percent: number;
+    removed_rate_percent: number;
+    load_percent: number;
+    load_per_operator: number;
+    active_operator_count: number;
+    throughput_per_hour: number;
+    feedback_count: number;
+    complaints_count: number;
+    complaint_rate_percent: number;
+    avg_rating: number;
+    rating_count: number;
+    branches: Array<{
+      branch_id: number;
+      branch_name: string;
+      queue_count: number;
+      total_tickets: number;
+      active_tickets: number;
+      processed_tickets: number;
+      waiting_tickets: number;
+      called_tickets: number;
+      in_service_tickets: number;
+      completed_tickets: number;
+      skipped_tickets: number;
+      not_arrived_tickets: number;
+      left_tickets: number;
+      removed_tickets: number;
+      avg_wait_seconds: number;
+      max_wait_seconds: number;
+      avg_service_seconds: number;
+      avg_initial_queue_position: number;
+      sla_wait_under_10_min_percent: number;
+      completion_rate_percent: number;
+      left_rate_percent: number;
+      not_arrived_rate_percent: number;
+      removed_rate_percent: number;
+      load_percent: number;
+      load_per_operator: number;
+      active_operator_count: number;
+      throughput_per_hour: number;
+      feedback_count: number;
+      complaints_count: number;
+      complaint_rate_percent: number;
+      avg_rating: number;
+      rating_count: number;
+    }>;
     queues: Array<{
       queue_id: number;
       queue_name: string;
       branch_id: number | null;
       branch_name: string | null;
+      total_tickets: number;
       active_tickets: number;
+      processed_tickets: number;
       waiting_tickets: number;
       called_tickets: number;
       in_service_tickets: number;
       completed_tickets: number;
+      skipped_tickets: number;
       not_arrived_tickets: number;
       left_tickets: number;
       removed_tickets: number;
       avg_wait_seconds: number;
+      max_wait_seconds: number;
       avg_service_seconds: number;
+      avg_initial_queue_position: number;
+      sla_wait_under_10_min_percent: number;
+      completion_rate_percent: number;
+      left_rate_percent: number;
+      not_arrived_rate_percent: number;
+      removed_rate_percent: number;
+      load_percent: number;
+      load_per_operator: number;
+      active_operator_count: number;
+      throughput_per_hour: number;
+      feedback_count: number;
+      complaints_count: number;
+      complaint_rate_percent: number;
+      avg_rating: number;
+      rating_count: number;
     }>;
     peak_hours: Array<{
       hour: number;
@@ -130,12 +208,58 @@ export interface AdminMetrics {
     operators: Array<{
       operator_id: number;
       operator_name: string;
+      branch_id: number | null;
+      branch_name: string | null;
       is_active: boolean;
       queue_count: number;
+      total_tickets: number;
       waiting_tickets: number;
       active_tickets: number;
+      processed_tickets: number;
+      called_tickets: number;
+      in_service_tickets: number;
+      completed_tickets: number;
+      skipped_tickets: number;
+      not_arrived_tickets: number;
+      left_tickets: number;
+      removed_tickets: number;
+      avg_wait_seconds: number;
+      max_wait_seconds: number;
+      avg_service_seconds: number;
+      avg_initial_queue_position: number;
+      sla_wait_under_10_min_percent: number;
+      completion_rate_percent: number;
+      left_rate_percent: number;
+      not_arrived_rate_percent: number;
+      removed_rate_percent: number;
+      load_percent: number;
+      load_per_operator: number;
+      active_operator_count: number;
+      throughput_per_hour: number;
+      feedback_count: number;
+      complaints_count: number;
+      complaint_rate_percent: number;
+      avg_rating: number;
+      rating_count: number;
+    }>;
+    daily: Array<{
+      date: string;
+      total_tickets: number;
+      completed_tickets: number;
+      left_tickets: number;
+      not_arrived_tickets: number;
+      avg_wait_seconds: number;
+      avg_service_seconds: number;
     }>;
   };
+}
+
+export interface AdminMetricsFilters {
+  branch_id?: number;
+  queue_id?: number;
+  operator_id?: number;
+  date_from?: string;
+  date_to?: string;
 }
 
 export interface AdminQueueSnapshot {
@@ -204,18 +328,22 @@ export interface AdminUpdateQueuePayload {
 export interface AdminCreateFeedbackPayload {
   branch?: number | null;
   queue?: number | null;
+  ticket?: number | null;
   type: FeedbackType;
   title: string;
   message: string;
+  rating?: number | null;
   status?: FeedbackStatus;
 }
 
 export interface AdminUpdateFeedbackPayload {
   branch?: number | null;
   queue?: number | null;
+  ticket?: number | null;
   type?: FeedbackType;
   title?: string;
   message?: string;
+  rating?: number | null;
   status?: FeedbackStatus;
 }
 

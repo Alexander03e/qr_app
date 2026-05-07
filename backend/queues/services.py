@@ -10,6 +10,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from clients.models import Client
 from clients.services import get_client_by_id, get_or_create_client_by_identity
 from queues.models import Queue, QueueStatus, Ticket
+from users.models import User
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,24 @@ def duration_seconds(start, end) -> float | None:
         return None
 
     return max((end - start).total_seconds(), 0.0)
+
+
+def assign_ticket_operator(
+    ticket: Ticket,
+    operator: User | None,
+    update_fields: list[str],
+    *,
+    overwrite: bool = True,
+) -> None:
+    if operator is None:
+        return
+
+    if ticket.operator_id is not None and not overwrite:
+        return
+
+    ticket.operator = operator
+    if 'operator' not in update_fields:
+        update_fields.append('operator')
 
 
 def get_average_service_seconds(queue: Queue) -> int | None:
@@ -342,7 +361,11 @@ def join_queue(
             initial_ticket_number=initial_ticket_number,
         )
 
-def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
+def update_ticket(
+    ticket_id: int,
+    new_status: QueueStatus,
+    operator: User | None = None,
+) -> Ticket:
     new_status = QueueStatus(new_status)
 
     allowed_transitions: dict[QueueStatus, set[QueueStatus]] = {
@@ -403,7 +426,8 @@ def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
             ticket.service_started_at = None
             ticket.finished_at = None
             ticket.enqueued_at = now
-            update_fields.extend(['called_at', 'service_started_at', 'finished_at', 'enqueued_at'])
+            ticket.operator = None
+            update_fields.extend(['called_at', 'service_started_at', 'finished_at', 'enqueued_at', 'operator'])
         # Для завершения обслуживания или выхода/удаления фиксируем момент окончания.
         if new_status in {
             QueueStatus.COMPLETED,
@@ -415,11 +439,21 @@ def update_ticket(ticket_id: int, new_status: QueueStatus) -> Ticket:
             ticket.finished_at = now
             update_fields.append('finished_at')
 
+        if new_status in {
+            QueueStatus.CALLED,
+            QueueStatus.IN_SERVICE,
+            QueueStatus.COMPLETED,
+            QueueStatus.SKIPPED,
+            QueueStatus.NOT_ARRIVED,
+            QueueStatus.REMOVED,
+        }:
+            assign_ticket_operator(ticket, operator, update_fields)
+
         ticket.save(update_fields=update_fields)
         return ticket
 
 
-def invite_next_ticket(queue_id: int) -> Ticket | None:
+def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | None:
     with transaction.atomic():
         try:
             queue = Queue.objects.select_for_update().get(pk=queue_id)
@@ -436,9 +470,16 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
         )
 
         if current_in_service_ticket is not None:
+            update_fields = ['status', 'finished_at', 'updated_at']
             current_in_service_ticket.status = QueueStatus.COMPLETED
             current_in_service_ticket.finished_at = now
-            current_in_service_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+            assign_ticket_operator(
+                current_in_service_ticket,
+                operator,
+                update_fields,
+                overwrite=False,
+            )
+            current_in_service_ticket.save(update_fields=update_fields)
 
         # Если ранее вызванный талон не перевели в обслуживание, считаем его пропущенным.
         current_called_ticket = (
@@ -448,9 +489,16 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
             .first()
         )
         if current_called_ticket is not None:
+            update_fields = ['status', 'finished_at', 'updated_at']
             current_called_ticket.status = QueueStatus.SKIPPED
             current_called_ticket.finished_at = now
-            current_called_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+            assign_ticket_operator(
+                current_called_ticket,
+                operator,
+                update_fields,
+                overwrite=False,
+            )
+            current_called_ticket.save(update_fields=update_fields)
 
         next_ticket = (
             queue.tickets
@@ -460,11 +508,13 @@ def invite_next_ticket(queue_id: int) -> Ticket | None:
         )
 
         if next_ticket is not None:
+            update_fields = ['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at']
             next_ticket.status = QueueStatus.CALLED
             next_ticket.called_at = now
             next_ticket.service_started_at = None
             next_ticket.finished_at = None
-            next_ticket.save(update_fields=['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at'])
+            assign_ticket_operator(next_ticket, operator, update_fields)
+            next_ticket.save(update_fields=update_fields)
 
         return next_ticket
 
@@ -496,8 +546,9 @@ def append_to_queue(ticket_id: int) -> Ticket:
         ticket.finished_at = None
         ticket.called_at = None
         ticket.service_started_at = None
+        ticket.operator = None
         ticket.enqueued_at = timezone.now()
-        ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'enqueued_at', 'updated_at'])
+        ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
         return ticket
 
 
@@ -514,8 +565,9 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
             ticket.finished_at = None
             ticket.called_at = None
             ticket.service_started_at = None
+            ticket.operator = None
             ticket.enqueued_at = timezone.now()
-            ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'enqueued_at', 'updated_at'])
+            ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
             return ticket
 
         if ticket.status != QueueStatus.WAITING:
@@ -552,7 +604,11 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
         return ticket
 
 
-def invite_ticket_by_id(ticket_id: int, action: str | None = None) -> Ticket:
+def invite_ticket_by_id(
+    ticket_id: int,
+    action: str | None = None,
+    operator: User | None = None,
+) -> Ticket:
     with transaction.atomic():
         try:
             ticket = Ticket.objects.select_related('queue', 'client').select_for_update().get(pk=ticket_id)
@@ -578,27 +634,41 @@ def invite_ticket_by_id(ticket_id: int, action: str | None = None) -> Ticket:
                 raise ValidationError({'action': ['Есть текущий талон. Укажите action=complete или action=return.']})
 
             if action == 'complete':
+                update_fields = ['status', 'finished_at', 'updated_at']
                 current_ticket.status = QueueStatus.COMPLETED
                 current_ticket.finished_at = now
-                current_ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+                assign_ticket_operator(
+                    current_ticket,
+                    operator,
+                    update_fields,
+                    overwrite=False,
+                )
+                current_ticket.save(update_fields=update_fields)
             else:
                 current_ticket.status = QueueStatus.WAITING
                 current_ticket.finished_at = None
                 current_ticket.called_at = None
                 current_ticket.service_started_at = None
+                current_ticket.operator = None
                 current_ticket.enqueued_at = now
-                current_ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'enqueued_at', 'updated_at'])
+                current_ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
 
+        update_fields = ['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at']
         ticket.status = QueueStatus.CALLED
         ticket.called_at = now
         ticket.service_started_at = None
         ticket.finished_at = None
-        ticket.save(update_fields=['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at'])
+        assign_ticket_operator(ticket, operator, update_fields)
+        ticket.save(update_fields=update_fields)
         return ticket
 
 
-def remove_ticket_from_queue(ticket_id: int) -> Ticket:
-    return update_ticket(ticket_id=ticket_id, new_status=QueueStatus.REMOVED)
+def remove_ticket_from_queue(ticket_id: int, operator: User | None = None) -> Ticket:
+    return update_ticket(
+        ticket_id=ticket_id,
+        new_status=QueueStatus.REMOVED,
+        operator=operator,
+    )
 
 
 def delete_tickets_from_queue(queue_id: int, ticket_ids: list[int]) -> dict:

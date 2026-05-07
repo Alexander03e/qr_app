@@ -28,6 +28,7 @@ export interface TicketItemResponse {
   finished_at: string | null;
   queue: number;
   client: number;
+  operator: number | null;
 }
 
 export interface QueueBoardTicketResponse {

@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { adminApi } from ".";
+import type { AdminMetricsFilters } from "../types";
 
 export const adminQueryKeys = {
   companies: ["admin", "companies"] as const,
@@ -9,7 +10,7 @@ export const adminQueryKeys = {
   queueById: (queueId: number) => ["admin", "queue", queueId] as const,
   operators: ["admin", "operators"] as const,
   feedback: ["admin", "feedback"] as const,
-  metrics: ["admin", "metrics"] as const,
+  metrics: (filters?: AdminMetricsFilters) => ["admin", "metrics", filters ?? {}] as const,
   queueSnapshot: (queueId: number) =>
     ["admin", "queue", queueId, "snapshot"] as const,
   session: ["admin", "me"] as const,
@@ -53,10 +54,10 @@ export const adminQueryOptions = {
       queryFn: () => adminApi.getFeedback(),
     }),
 
-  metrics: () =>
+  metrics: (filters?: AdminMetricsFilters) =>
     queryOptions({
-      queryKey: adminQueryKeys.metrics,
-      queryFn: () => adminApi.getMetrics(),
+      queryKey: adminQueryKeys.metrics(filters),
+      queryFn: () => adminApi.getMetrics(filters),
       refetchInterval: 10000,
     }),
 

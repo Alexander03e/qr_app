@@ -35,9 +35,11 @@ export interface BranchFormValues {
 export interface FeedbackFormValues {
   branch?: number;
   queue?: number;
+  ticket?: number;
   type: FeedbackType;
   title: string;
   message: string;
+  rating?: number;
   status: FeedbackStatus;
 }
 

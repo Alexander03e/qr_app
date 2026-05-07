@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class FeedbackType(models.TextChoices):
@@ -35,9 +36,23 @@ class FeedbackItem(models.Model):
 		related_name='feedback_items',
 		verbose_name='Очередь',
 	)
+	ticket = models.ForeignKey(
+		'queues.Ticket',
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+		related_name='feedback_items',
+		verbose_name='Талон',
+	)
 	type = models.CharField(max_length=20, choices=FeedbackType.choices, verbose_name='Тип')
 	title = models.CharField(max_length=255, verbose_name='Тема')
 	message = models.TextField(verbose_name='Сообщение')
+	rating = models.PositiveSmallIntegerField(
+		null=True,
+		blank=True,
+		validators=[MinValueValidator(1), MaxValueValidator(5)],
+		verbose_name='Оценка обслуживания',
+	)
 	status = models.CharField(
 		max_length=20,
 		choices=FeedbackStatus.choices,

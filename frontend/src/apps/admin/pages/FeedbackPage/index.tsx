@@ -4,7 +4,7 @@ import {
   feedbackTypeColors,
 } from "@apps/admin/features/Dashboard/constants";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Popconfirm, Space, Table, Tag } from "antd";
+import { Button, Popconfirm, Rate, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,14 @@ export const FeedbackPage = () => {
         ),
       },
       { title: t("admin.feedback.title"), dataIndex: "title", key: "title" },
+      {
+        title: t("admin.feedback.rating"),
+        dataIndex: "rating",
+        key: "rating",
+        width: 160,
+        render: (value: number | null) =>
+          value ? <Rate disabled value={value} /> : "-",
+      },
       {
         title: t("admin.feedback.status"),
         dataIndex: "status",

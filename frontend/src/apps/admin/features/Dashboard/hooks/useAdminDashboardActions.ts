@@ -148,9 +148,11 @@ export const useAdminDashboardActions = ({
         type: feedback.type,
         title: feedback.title,
         message: feedback.message,
+        rating: feedback.rating ?? undefined,
         status: feedback.status,
         branch: feedback.branch ?? undefined,
         queue: feedback.queue ?? undefined,
+        ticket: feedback.ticket ?? undefined,
       });
     },
     [dashboard],
@@ -296,9 +298,11 @@ export const useAdminDashboardActions = ({
         type: values.type,
         title: values.title,
         message: values.message,
+        rating: values.rating ?? null,
         status: values.status,
         branch: values.branch ?? null,
         queue: values.queue ?? null,
+        ticket: values.ticket ?? null,
       };
 
       if (dashboard.editingFeedback) {
