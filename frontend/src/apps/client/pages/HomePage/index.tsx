@@ -1,14 +1,19 @@
 import { Circle } from "@apps/client/components";
+import { BellOutlined } from "@ant-design/icons";
 import { Label } from "@shared/components/Label";
 import { Button, Flex, Typography } from "antd";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NotificationSettingsModal } from "./components/NotificationSettingsModal";
 import styles from "./HomePage.module.scss";
 import { useClientQueueController } from "./hooks/useClientQueueController";
 
 export const HomePage = () => {
   const { t } = useTranslation();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const {
     calledTimeLeftLabel,
+    clientId,
     circleTitle,
     estimatedWaitLabel,
     handleLeaveQueue,
@@ -20,6 +25,7 @@ export const HomePage = () => {
     isSkipOneAheadDisabled,
     isSkipPending,
     percent,
+    queueId,
     ticket,
   } = useClientQueueController();
 
@@ -52,6 +58,12 @@ export const HomePage = () => {
       </div>
       <div className={styles.bottom}>
         <Button
+          icon={<BellOutlined />}
+          onClick={() => setIsNotificationsOpen(true)}
+        >
+          {t("client.notifications.openButton")}
+        </Button>
+        <Button
           type="primary"
           onClick={handleSkipOneAhead}
           loading={isSkipPending}
@@ -69,6 +81,13 @@ export const HomePage = () => {
           {t("client.homePage.leaveQueue")}
         </Button>
       </div>
+      <NotificationSettingsModal
+        clientId={clientId}
+        open={isNotificationsOpen}
+        queueId={queueId}
+        ticketId={ticket?.id}
+        onClose={() => setIsNotificationsOpen(false)}
+      />
     </Flex>
   );
 };

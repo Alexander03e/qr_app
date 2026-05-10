@@ -25,6 +25,26 @@
       "leaveQueue": "Leave queue",
       "leaveQueueError": "Failed to leave queue"
     },
+    "notifications": {
+      "openButton": "Enable notifications",
+      "title": "Notifications",
+      "enabled": "enabled",
+      "pushTitle": "Browser push",
+      "enablePush": "Enable push",
+      "pushEnabled": "Push notifications enabled",
+      "pushEnabledShort": "Push enabled",
+      "pushUnsupported": "This browser does not support push notifications",
+      "pushNotConfigured": "Push keys are not configured on the server",
+      "pushDenied": "Notification permission was not granted",
+      "pushFailed": "Failed to enable push",
+      "vkTitle": "VK integration",
+      "vkPlaceholder": "VK ID",
+      "connectVk": "Connect VK",
+      "updateVk": "Update VK",
+      "vkEnabled": "VK notifications connected",
+      "vkFailed": "Failed to connect VK",
+      "statusUnavailable": "Subscription status is temporarily unavailable"
+    },
     "guestPage": {
       "enterQueue": "Join queue",
       "queueCaption": "{{count}} people in queue",

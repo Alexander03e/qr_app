@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 from clients.models import Client
 from companies.models import Branch, Company
 from queues.models import Queue, QueueStatus, Ticket
-from users.models import AdminToken, Role, User
+from users.models import AuthToken, Role, User
 
 
 class AdminMetricsApiTests(APITestCase):
@@ -27,7 +27,7 @@ class AdminMetricsApiTests(APITestCase):
 			role=Role.ADMIN,
 			company=self.company,
 		)
-		self.admin_token = AdminToken.objects.create(
+		self.admin_token = AuthToken.objects.create(
 			user=self.admin,
 			key='metrics-admin-token',
 			expires_at=timezone.now() + timedelta(hours=1),
@@ -118,7 +118,6 @@ class AdminMetricsApiTests(APITestCase):
 			**self.admin_headers(),
 			format='json',
 		)
-
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertEqual(response.data['business']['total_tickets'], 1)
 		self.assertEqual(response.data['business']['completed_tickets'], 1)

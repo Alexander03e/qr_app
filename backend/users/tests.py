@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from companies.models import Branch, Company
-from users.models import OperatorToken, Role, User
+from users.models import AuthToken, Role, User
 
 
 class OperatorAuthTests(APITestCase):
@@ -41,7 +41,7 @@ class OperatorAuthTests(APITestCase):
 		self.assertEqual(response.data['operator']['email'], 'operator-login@example.com')
 
 	def test_operator_me_requires_valid_token(self):
-		token = OperatorToken.objects.create(
+		token = AuthToken.objects.create(
 			user=self.operator,
 			key='operator-me-token',
 			expires_at=timezone.now() + timedelta(hours=1),
@@ -57,7 +57,7 @@ class OperatorAuthTests(APITestCase):
 		self.assertEqual(response.data['operator']['email'], 'operator-login@example.com')
 
 	def test_operator_logout_revokes_token(self):
-		token = OperatorToken.objects.create(
+		token = AuthToken.objects.create(
 			user=self.operator,
 			key='operator-logout-token',
 			expires_at=timezone.now() + timedelta(hours=1),
@@ -76,3 +76,16 @@ class OperatorAuthTests(APITestCase):
 			format='json',
 		)
 		self.assertEqual(me_response.status_code, status.HTTP_403_FORBIDDEN)
+
+	def test_prometheus_metrics_endpoint_exposes_http_metrics(self):
+		self.client.post(
+			'/api/v1/auth/operator/login/',
+			{'email': 'operator-login@example.com', 'password': 'password123'},
+			format='json',
+		)
+
+		response = self.client.get('/metrics')
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIn(b'queueflow_http_requests_total', response.content)
+		self.assertIn(b'queueflow_http_request_latency_seconds', response.content)

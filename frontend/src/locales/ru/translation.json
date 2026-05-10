@@ -27,6 +27,26 @@
       "leaveQueue": "Выйти из очереди",
       "leaveQueueError": "Не удалось выйти из очереди"
     },
+    "notifications": {
+      "openButton": "Включить уведомления",
+      "title": "Уведомления",
+      "enabled": "включено",
+      "pushTitle": "Push в браузере",
+      "enablePush": "Включить push",
+      "pushEnabled": "Push-уведомления включены",
+      "pushEnabledShort": "Push включен",
+      "pushUnsupported": "Браузер не поддерживает push-уведомления",
+      "pushNotConfigured": "Push-ключи не настроены на сервере",
+      "pushDenied": "Разрешение на уведомления не выдано",
+      "pushFailed": "Не удалось включить push",
+      "vkTitle": "Интеграция с VK",
+      "vkPlaceholder": "VK ID",
+      "connectVk": "Подключить VK",
+      "updateVk": "Обновить VK",
+      "vkEnabled": "VK-уведомления подключены",
+      "vkFailed": "Не удалось подключить VK",
+      "statusUnavailable": "Статус подписок временно недоступен"
+    },
     "leftPage": {
       "title": "Вы покинули очередь",
       "completedTitle": "Обслуживание завершено",

@@ -1,15 +1,6 @@
 from rest_framework import serializers
 
 
-class AdminEndpointMetricSerializer(serializers.Serializer):
-    method = serializers.CharField()
-    endpoint = serializers.CharField()
-    requests = serializers.IntegerField()
-    error_requests = serializers.IntegerField()
-    error_rate_percent = serializers.FloatField()
-    avg_latency_ms = serializers.FloatField()
-
-
 class BusinessMetricFieldsMixin(serializers.Serializer):
     total_tickets = serializers.IntegerField()
     active_tickets = serializers.IntegerField()
@@ -89,9 +80,4 @@ class AdminBusinessMetricsSerializer(BusinessMetricFieldsMixin):
 
 class AdminMetricsSerializer(serializers.Serializer):
     company_id = serializers.IntegerField()
-    total_requests = serializers.IntegerField()
-    error_requests = serializers.IntegerField()
-    error_rate_percent = serializers.FloatField()
-    avg_latency_ms = serializers.FloatField()
-    endpoints = AdminEndpointMetricSerializer(many=True)
     business = AdminBusinessMetricsSerializer()

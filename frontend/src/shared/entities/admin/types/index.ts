@@ -90,18 +90,6 @@ export interface AdminFeedbackItem {
 
 export interface AdminMetrics {
   company_id: number;
-  total_requests: number;
-  error_requests: number;
-  error_rate_percent: number;
-  avg_latency_ms: number;
-  endpoints: Array<{
-    method: string;
-    endpoint: string;
-    requests: number;
-    error_requests: number;
-    error_rate_percent: number;
-    avg_latency_ms: number;
-  }>;
   business: {
     total_tickets: number;
     active_tickets: number;

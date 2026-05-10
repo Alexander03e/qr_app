@@ -138,6 +138,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
+WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
+WEB_PUSH_VAPID_SUBJECT = os.getenv('WEB_PUSH_VAPID_SUBJECT', 'mailto:admin@example.com')
+
+VK_BOT_ACCESS_TOKEN = os.getenv('VK_BOT_ACCESS_TOKEN', '')
+VK_API_VERSION = os.getenv('VK_API_VERSION', '5.199')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

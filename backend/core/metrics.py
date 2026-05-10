@@ -1,4 +1,5 @@
-from prometheus_client import Counter, Histogram
+from django.http import HttpResponse
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 
 HTTP_REQUESTS_TOTAL = Counter(
@@ -12,3 +13,13 @@ HTTP_REQUEST_LATENCY_SECONDS = Histogram(
     'HTTP request latency in seconds',
     ['company_id', 'method', 'endpoint'],
 )
+
+NOTIFICATION_DELIVERIES_TOTAL = Counter(
+    'queueflow_notification_deliveries_total',
+    'Total number of client notification delivery attempts',
+    ['channel', 'event_type', 'status'],
+)
+
+
+def prometheus_metrics_view(request):
+    return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)

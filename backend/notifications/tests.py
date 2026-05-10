@@ -5,10 +5,17 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from companies.models import Branch, Company
-from notifications.models import FeedbackItem, FeedbackStatus, FeedbackType
+from notifications.models import (
+	ClientNotificationSubscription,
+	FeedbackItem,
+	FeedbackStatus,
+	FeedbackType,
+	NotificationChannelType,
+	WebhookSubscription,
+)
 from clients.models import Client
 from queues.models import Queue, QueueStatus, Ticket
-from users.models import AdminToken, Role, User
+from users.models import AuthToken, Role, User
 
 
 class AdminFeedbackApiTests(APITestCase):
@@ -36,7 +43,7 @@ class AdminFeedbackApiTests(APITestCase):
 			role=Role.ADMIN,
 			company=self.company,
 		)
-		self.admin_token = AdminToken.objects.create(
+		self.admin_token = AuthToken.objects.create(
 			user=self.admin,
 			key='feedback-admin-token',
 			expires_at=timezone.now() + timedelta(hours=1),
@@ -96,3 +103,73 @@ class AdminFeedbackApiTests(APITestCase):
 		self.assertEqual(update_response.data['status'], FeedbackStatus.RESOLVED)
 		self.assertEqual(update_response.data['resolved_by_user'], self.admin.id)
 		self.assertIsNotNone(update_response.data['resolved_at'])
+
+	def test_client_can_subscribe_to_web_push(self):
+		response = self.client.post(
+			'/api/v1/notifications/web-push/subscribe/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+				'subscription': {
+					'endpoint': 'https://push.example.test/subscription/1',
+					'keys': {
+						'p256dh': 'p256dh-test-key',
+						'auth': 'auth-test-key',
+					},
+				},
+			},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		subscription = ClientNotificationSubscription.objects.get(id=response.data['id'])
+		self.assertEqual(subscription.channel, NotificationChannelType.WEB_PUSH)
+		self.assertEqual(subscription.client_id, self.client_obj.id)
+		self.assertEqual(subscription.queue_id, self.queue.id)
+		self.assertTrue(subscription.is_active)
+
+	def test_client_can_subscribe_to_vk_notifications(self):
+		response = self.client.post(
+			'/api/v1/notifications/vk/subscribe/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+				'vk_id': '123456789',
+			},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.client_obj.refresh_from_db()
+		self.assertEqual(self.client_obj.vk_id, '123456789')
+		self.assertTrue(self.client_obj.send_notification)
+		self.assertTrue(
+			ClientNotificationSubscription.objects.filter(
+				client=self.client_obj,
+				queue=self.queue,
+				channel=NotificationChannelType.VK,
+				vk_user_id='123456789',
+				is_active=True,
+			).exists()
+		)
+
+	def test_admin_can_create_webhook_subscription_for_company_queue(self):
+		response = self.client.post(
+			'/api/v1/admin/webhook-subscriptions/',
+			{
+				'name': 'CRM интеграция',
+				'queue': self.queue.id,
+				'target_url': 'https://crm.example.test/webhooks/queueflow',
+				'event_types': ['ticket.called'],
+				'secret': 'secret-key',
+				'is_active': True,
+			},
+			**self.admin_headers(),
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		webhook_subscription = WebhookSubscription.objects.get(id=response.data['id'])
+		self.assertEqual(webhook_subscription.company_id, self.company.id)
+		self.assertEqual(webhook_subscription.queue_id, self.queue.id)
+		self.assertEqual(webhook_subscription.created_by_user_id, self.admin.id)

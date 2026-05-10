@@ -30,11 +30,11 @@ def _parse_datetime_filter(params, name: str, *, end_of_day: bool = False) -> da
 		return None
 
 	parsed = parse_datetime(value)
-	if parsed is None:
-		parsed_date = parse_date(value)
-		if parsed_date is None:
-			raise ValidationError({name: ['Ожидалась дата YYYY-MM-DD или ISO datetime.']})
+	parsed_date = parse_date(value)
+	if parsed_date is not None and value.strip() == parsed_date.isoformat():
 		parsed = datetime.combine(parsed_date, time.max if end_of_day else time.min)
+	elif parsed is None:
+		raise ValidationError({name: ['Ожидалась дата YYYY-MM-DD или ISO datetime.']})
 
 	if timezone.is_naive(parsed):
 		parsed = timezone.make_aware(parsed)
@@ -78,11 +78,6 @@ class AdminMetricsView(APIView):
 			return Response(
 				{
 					'company_id': 0,
-					'total_requests': 0,
-					'error_requests': 0,
-					'error_rate_percent': 0,
-					'avg_latency_ms': 0,
-					'endpoints': [],
 					'business': empty_business_metrics(),
 				},
 				status=status.HTTP_200_OK,

@@ -6,7 +6,7 @@ from django.utils import timezone
 from clients.models import Client
 from companies.models import Branch, Company
 from queues.models import Queue, QueueStatus, Ticket
-from users.models import AdminToken, OperatorToken, Role, User
+from users.models import AuthToken, Role, User
 
 
 class QueueTicketApiTests(APITestCase):
@@ -33,7 +33,7 @@ class QueueTicketApiTests(APITestCase):
 			company=self.company,
 			branch=self.branch,
 		)
-		self.operator_token = OperatorToken.objects.create(
+		self.operator_token = AuthToken.objects.create(
 			user=self.operator,
 			key='test-operator-token',
 			expires_at=timezone.now() + timedelta(hours=1),
@@ -45,7 +45,7 @@ class QueueTicketApiTests(APITestCase):
 			role=Role.ADMIN,
 			company=self.company,
 		)
-		self.admin_token = AdminToken.objects.create(
+		self.admin_token = AuthToken.objects.create(
 			user=self.admin,
 			key='test-admin-token',
 			expires_at=timezone.now() + timedelta(hours=1),

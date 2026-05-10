@@ -17,8 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from core.metrics import prometheus_metrics_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('metrics', prometheus_metrics_view, name='prometheus-metrics-no-slash'),
+    path('metrics/', prometheus_metrics_view, name='prometheus-metrics'),
     path('api/v1/', include('api.v1.urls')),
 ]

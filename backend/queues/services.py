@@ -18,6 +18,15 @@ CALLED_TICKET_TIMEOUT_SECONDS = 5 * 60
 SERVICE_HISTORY_LIMIT = 30
 
 
+def schedule_ticket_called_notification(ticket_id: int) -> None:
+    def notify_after_commit():
+        from notifications.services import notify_ticket_called
+
+        notify_ticket_called(ticket_id)
+
+    transaction.on_commit(notify_after_commit)
+
+
 def get_called_ticket_timeout_seconds(queue: Queue) -> int:
     if queue.called_ticket_timeout_seconds is None:
         return CALLED_TICKET_TIMEOUT_SECONDS
@@ -450,6 +459,8 @@ def update_ticket(
             assign_ticket_operator(ticket, operator, update_fields)
 
         ticket.save(update_fields=update_fields)
+        if new_status == QueueStatus.CALLED:
+            schedule_ticket_called_notification(ticket.id)
         return ticket
 
 
@@ -515,6 +526,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
             next_ticket.finished_at = None
             assign_ticket_operator(next_ticket, operator, update_fields)
             next_ticket.save(update_fields=update_fields)
+            schedule_ticket_called_notification(next_ticket.id)
 
         return next_ticket
 
@@ -660,6 +672,7 @@ def invite_ticket_by_id(
         ticket.finished_at = None
         assign_ticket_operator(ticket, operator, update_fields)
         ticket.save(update_fields=update_fields)
+        schedule_ticket_called_notification(ticket.id)
         return ticket
 
 
