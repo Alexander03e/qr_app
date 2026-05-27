@@ -15,7 +15,7 @@ def get_client_by_id(client_id: int) -> Client:
         raise NotFound('Клиент не найден.') from exc
 
 
-def get_or_create_client_by_identity(client_data: dict, branch_id: str | None = None) -> Client:
+def get_or_create_client_by_identity(client_data: dict, branch_id: int | None = None) -> Client:
     queue_token = client_data.get('queue_token')
     device_id = client_data.get('device_id')
     phone = client_data.get('phone')
@@ -30,7 +30,7 @@ def get_or_create_client_by_identity(client_data: dict, branch_id: str | None = 
         'queue_token': queue_token or generate_queue_token(),
     }
     if branch_id is not None:
-        defaults['branch_id'] = str(branch_id)
+        defaults['branch_id'] = branch_id
 
     # Приоритет идентификации: queue_token -> device_id -> phone.
     client = None
@@ -65,7 +65,7 @@ def get_or_create_client_by_identity(client_data: dict, branch_id: str | None = 
             update_fields.append('device_id')
 
     if branch_id is not None and not client.branch_id:
-        client.branch_id = str(branch_id)
+        client.branch_id = branch_id
         update_fields.append('branch_id')
 
     preferred_lang = client_data.get('preferred_lang')

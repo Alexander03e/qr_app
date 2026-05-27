@@ -8,8 +8,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 
-from companies.models import Branch
+from users.authentication import AuthTokenAuthentication
 from users.models import Role, User
+from users.permissions import IsAdminUser, IsOperatorUser
 from users.serializers import (
 	AdminSettingsSerializer,
 	AdminLoginResponseSerializer,
@@ -27,11 +28,6 @@ from users.serializers import (
 from users.services import (
 	authenticate_admin,
 	authenticate_operator,
-	get_admin_by_token,
-	get_operator_by_token,
-	parse_bearer_token,
-	revoke_admin_token,
-	revoke_operator_token,
 )
 
 
@@ -63,36 +59,40 @@ class OperatorLoginView(APIView):
 
 
 class OperatorSessionView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsOperatorUser]
+
 	@extend_schema(responses={status.HTTP_200_OK: OperatorSessionSerializer})
 	def get(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		user = get_operator_by_token(token)
-
 		return Response(
 			{
-				'operator': OperatorProfileSerializer(user).data,
+				'operator': OperatorProfileSerializer(request.user).data,
 			},
 			status=status.HTTP_200_OK,
 		)
 
 
 class OperatorLogoutView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsOperatorUser]
+
 	@extend_schema(responses={status.HTTP_200_OK: OperatorLogoutResponseSerializer})
 	def post(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		revoke_operator_token(token)
+		request.auth.delete()
 
 		return Response({'detail': 'ok'}, status=status.HTTP_200_OK)
 
 
 class OperatorSettingsView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsOperatorUser]
+
 	@extend_schema(
 		request=OperatorSettingsSerializer,
 		responses={status.HTTP_200_OK: OperatorSessionSerializer},
 	)
 	def patch(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		operator_user = get_operator_by_token(token)
+		operator_user = request.user
 
 		serializer = OperatorSettingsSerializer(
 			operator_user,
@@ -138,36 +138,40 @@ class AdminLoginView(APIView):
 
 
 class AdminSessionView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
+
 	@extend_schema(responses={status.HTTP_200_OK: AdminSessionSerializer})
 	def get(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		user = get_admin_by_token(token)
-
 		return Response(
 			{
-				'admin': AdminProfileSerializer(user).data,
+				'admin': AdminProfileSerializer(request.user).data,
 			},
 			status=status.HTTP_200_OK,
 		)
 
 
 class AdminLogoutView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
+
 	@extend_schema(responses={status.HTTP_200_OK: OperatorLogoutResponseSerializer})
 	def post(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		revoke_admin_token(token)
+		request.auth.delete()
 
 		return Response({'detail': 'ok'}, status=status.HTTP_200_OK)
 
 
 class AdminSettingsView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
+
 	@extend_schema(
 		request=AdminSettingsSerializer,
 		responses={status.HTTP_200_OK: AdminSessionSerializer},
 	)
 	def patch(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		admin_user = get_admin_by_token(token)
+		admin_user = request.user
 
 		serializer = AdminSettingsSerializer(
 			admin_user,
@@ -192,12 +196,13 @@ class AdminSettingsView(APIView):
 
 
 class AdminOperatorViewSet(viewsets.ModelViewSet):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
 	serializer_class = AdminOperatorSerializer
 	queryset = User.objects.select_related('company', 'branch').prefetch_related('assigned_queues').filter(role=Role.OPERATOR)
 
 	def _require_admin(self):
-		token = parse_bearer_token(self.request.headers.get('Authorization'))
-		return get_admin_by_token(token)
+		return self.request.user
 
 	def get_queryset(self):
 		admin_user = self._require_admin()

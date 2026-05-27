@@ -55,8 +55,14 @@ export const DashboardSidebar = () => {
   ];
 
   return (
-    <Layout.Sider width={240} theme="light">
-      <div style={{ padding: 16 }}>
+    <Layout.Sider
+      width={240}
+      theme="light"
+      breakpoint="lg"
+      collapsedWidth={0}
+      className="admin-dashboard__sidebar"
+    >
+      <div className="admin-dashboard__sidebar-header">
         <Typography.Title level={4} style={{ marginBottom: 0 }}>
           {t("admin.title")}
         </Typography.Title>

@@ -18,11 +18,29 @@ CALLED_TICKET_TIMEOUT_SECONDS = 5 * 60
 SERVICE_HISTORY_LIMIT = 30
 
 
-def schedule_ticket_called_notification(ticket_id: int) -> None:
-    def notify_after_commit():
-        from notifications.services import notify_ticket_called
+def normalize_ticket_status(status) -> str:
+    return str(getattr(status, 'value', status))
 
-        notify_ticket_called(ticket_id)
+
+def schedule_ticket_status_changed_notification(
+    *,
+    ticket_id: int,
+    previous_status,
+    new_status,
+) -> None:
+    previous_status = normalize_ticket_status(previous_status)
+    new_status = normalize_ticket_status(new_status)
+    if previous_status == new_status:
+        return
+
+    def notify_after_commit():
+        from notifications.services import notify_ticket_status_changed
+
+        notify_ticket_status_changed(
+            ticket_id=ticket_id,
+            previous_status=previous_status,
+            new_status=new_status,
+        )
 
     transaction.on_commit(notify_after_commit)
 
@@ -134,9 +152,15 @@ def expire_called_tickets(queue: Queue) -> None:
     )
 
     for ticket in expired_tickets:
+        previous_status = ticket.status
         ticket.status = QueueStatus.NOT_ARRIVED
         ticket.finished_at = now
         ticket.save(update_fields=['status', 'finished_at', 'updated_at'])
+        schedule_ticket_status_changed_notification(
+            ticket_id=ticket.id,
+            previous_status=previous_status,
+            new_status=ticket.status,
+        )
 
 
 def resolve_client_from_identifier(client_id: str | None):
@@ -292,7 +316,7 @@ def add_new_ticket(queue: Queue, client_id: int, initial_ticket_number: int) -> 
 def resolve_client(queue: Queue, client_data: dict | None):
     return get_or_create_client_by_identity(
         client_data=client_data or {},
-        branch_id=str(queue.branch_id),
+        branch_id=queue.branch_id,
     )
 
 
@@ -459,8 +483,11 @@ def update_ticket(
             assign_ticket_operator(ticket, operator, update_fields)
 
         ticket.save(update_fields=update_fields)
-        if new_status == QueueStatus.CALLED:
-            schedule_ticket_called_notification(ticket.id)
+        schedule_ticket_status_changed_notification(
+            ticket_id=ticket.id,
+            previous_status=current_status,
+            new_status=new_status,
+        )
         return ticket
 
 
@@ -481,6 +508,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
         )
 
         if current_in_service_ticket is not None:
+            previous_status = current_in_service_ticket.status
             update_fields = ['status', 'finished_at', 'updated_at']
             current_in_service_ticket.status = QueueStatus.COMPLETED
             current_in_service_ticket.finished_at = now
@@ -491,6 +519,11 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
                 overwrite=False,
             )
             current_in_service_ticket.save(update_fields=update_fields)
+            schedule_ticket_status_changed_notification(
+                ticket_id=current_in_service_ticket.id,
+                previous_status=previous_status,
+                new_status=current_in_service_ticket.status,
+            )
 
         # Если ранее вызванный талон не перевели в обслуживание, считаем его пропущенным.
         current_called_ticket = (
@@ -500,6 +533,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
             .first()
         )
         if current_called_ticket is not None:
+            previous_status = current_called_ticket.status
             update_fields = ['status', 'finished_at', 'updated_at']
             current_called_ticket.status = QueueStatus.SKIPPED
             current_called_ticket.finished_at = now
@@ -510,6 +544,11 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
                 overwrite=False,
             )
             current_called_ticket.save(update_fields=update_fields)
+            schedule_ticket_status_changed_notification(
+                ticket_id=current_called_ticket.id,
+                previous_status=previous_status,
+                new_status=current_called_ticket.status,
+            )
 
         next_ticket = (
             queue.tickets
@@ -519,6 +558,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
         )
 
         if next_ticket is not None:
+            previous_status = next_ticket.status
             update_fields = ['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at']
             next_ticket.status = QueueStatus.CALLED
             next_ticket.called_at = now
@@ -526,7 +566,11 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
             next_ticket.finished_at = None
             assign_ticket_operator(next_ticket, operator, update_fields)
             next_ticket.save(update_fields=update_fields)
-            schedule_ticket_called_notification(next_ticket.id)
+            schedule_ticket_status_changed_notification(
+                ticket_id=next_ticket.id,
+                previous_status=previous_status,
+                new_status=next_ticket.status,
+            )
 
         return next_ticket
 
@@ -554,6 +598,7 @@ def append_to_queue(ticket_id: int) -> Ticket:
                 }
             )
 
+        previous_status = ticket.status
         ticket.status = QueueStatus.WAITING
         ticket.finished_at = None
         ticket.called_at = None
@@ -561,6 +606,11 @@ def append_to_queue(ticket_id: int) -> Ticket:
         ticket.operator = None
         ticket.enqueued_at = timezone.now()
         ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+        schedule_ticket_status_changed_notification(
+            ticket_id=ticket.id,
+            previous_status=previous_status,
+            new_status=ticket.status,
+        )
         return ticket
 
 
@@ -573,6 +623,7 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
             raise NotFound('Талон не найден.') from exc
 
         if ticket.status == QueueStatus.CALLED:
+            previous_status = ticket.status
             ticket.status = QueueStatus.WAITING
             ticket.finished_at = None
             ticket.called_at = None
@@ -580,6 +631,11 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
             ticket.operator = None
             ticket.enqueued_at = timezone.now()
             ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+            schedule_ticket_status_changed_notification(
+                ticket_id=ticket.id,
+                previous_status=previous_status,
+                new_status=ticket.status,
+            )
             return ticket
 
         if ticket.status != QueueStatus.WAITING:
@@ -646,6 +702,7 @@ def invite_ticket_by_id(
                 raise ValidationError({'action': ['Есть текущий талон. Укажите action=complete или action=return.']})
 
             if action == 'complete':
+                previous_status = current_ticket.status
                 update_fields = ['status', 'finished_at', 'updated_at']
                 current_ticket.status = QueueStatus.COMPLETED
                 current_ticket.finished_at = now
@@ -656,7 +713,13 @@ def invite_ticket_by_id(
                     overwrite=False,
                 )
                 current_ticket.save(update_fields=update_fields)
+                schedule_ticket_status_changed_notification(
+                    ticket_id=current_ticket.id,
+                    previous_status=previous_status,
+                    new_status=current_ticket.status,
+                )
             else:
+                previous_status = current_ticket.status
                 current_ticket.status = QueueStatus.WAITING
                 current_ticket.finished_at = None
                 current_ticket.called_at = None
@@ -664,7 +727,13 @@ def invite_ticket_by_id(
                 current_ticket.operator = None
                 current_ticket.enqueued_at = now
                 current_ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+                schedule_ticket_status_changed_notification(
+                    ticket_id=current_ticket.id,
+                    previous_status=previous_status,
+                    new_status=current_ticket.status,
+                )
 
+        previous_status = ticket.status
         update_fields = ['status', 'called_at', 'service_started_at', 'finished_at', 'updated_at']
         ticket.status = QueueStatus.CALLED
         ticket.called_at = now
@@ -672,7 +741,11 @@ def invite_ticket_by_id(
         ticket.finished_at = None
         assign_ticket_operator(ticket, operator, update_fields)
         ticket.save(update_fields=update_fields)
-        schedule_ticket_called_notification(ticket.id)
+        schedule_ticket_status_changed_notification(
+            ticket_id=ticket.id,
+            previous_status=previous_status,
+            new_status=ticket.status,
+        )
         return ticket
 
 

@@ -1,7 +1,7 @@
 import secrets
 from datetime import timedelta
 
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -34,15 +34,8 @@ def authenticate_operator(email: str, password: str) -> tuple[AuthToken, User]:
     if not user.is_active:
         raise AuthenticationFailed('Пользователь неактивен.')
 
-    is_hashed = user.password.startswith('pbkdf2_')
-    is_valid_password = check_password(password, user.password) if is_hashed else user.password == password
-    if not is_valid_password:
+    if not check_password(password, user.password):
         raise AuthenticationFailed('Неверный email или пароль.')
-
-    # Мягкая миграция старых пользователей с plaintext-паролем.
-    if not is_hashed:
-        user.password = make_password(password)
-        user.save(update_fields=['password'])
 
     token = _issue_token(user)
     return token, user
@@ -63,60 +56,30 @@ def authenticate_admin(email: str, password: str) -> tuple[AuthToken, User]:
     if user.company_id is None:
         raise AuthenticationFailed('Администратор должен быть привязан к компании.')
 
-    is_hashed = user.password.startswith('pbkdf2_')
-    is_valid_password = check_password(password, user.password) if is_hashed else user.password == password
-    if not is_valid_password:
+    if not check_password(password, user.password):
         raise AuthenticationFailed('Неверный email или пароль.')
-
-    if not is_hashed:
-        user.password = make_password(password)
-        user.save(update_fields=['password'])
 
     token = _issue_token(user)
     return token, user
 
 
-def get_operator_by_token(raw_token: str | None) -> User:
+def get_auth_token(raw_token: str | None) -> AuthToken:
     if not raw_token:
-        raise AuthenticationFailed('Требуется токен оператора.')
+        raise AuthenticationFailed('Требуется токен авторизации.')
 
     try:
         token = AuthToken.objects.select_related('user').get(key=raw_token)
     except AuthToken.DoesNotExist as exc:
-        raise AuthenticationFailed('Токен оператора недействителен.') from exc
+        raise AuthenticationFailed('Токен авторизации недействителен.') from exc
 
     if token.expires_at <= timezone.now():
         token.delete()
-        raise AuthenticationFailed('Срок действия токена оператора истек.')
+        raise AuthenticationFailed('Срок действия токена авторизации истек.')
 
-    user = token.user
-    if not user.is_active or user.role != Role.OPERATOR:
-        raise AuthenticationFailed('Недостаточно прав для действия оператора.')
+    if not token.user.is_active:
+        raise AuthenticationFailed('Пользователь неактивен.')
 
-    return user
-
-
-def get_admin_by_token(raw_token: str | None) -> User:
-    if not raw_token:
-        raise AuthenticationFailed('Требуется токен администратора.')
-
-    try:
-        token = AuthToken.objects.select_related('user').get(key=raw_token)
-    except AuthToken.DoesNotExist as exc:
-        raise AuthenticationFailed('Токен администратора недействителен.') from exc
-
-    if token.expires_at <= timezone.now():
-        token.delete()
-        raise AuthenticationFailed('Срок действия токена администратора истек.')
-
-    user = token.user
-    if not user.is_active or user.role != Role.ADMIN:
-        raise AuthenticationFailed('Недостаточно прав для действия администратора.')
-
-    if user.company_id is None:
-        raise AuthenticationFailed('Администратор должен быть привязан к компании.')
-
-    return user
+    return token
 
 
 def parse_bearer_token(authorization_header: str | None) -> str | None:
@@ -128,17 +91,3 @@ def parse_bearer_token(authorization_header: str | None) -> str | None:
         return None
 
     return authorization_header[len(prefix):].strip() or None
-
-
-def revoke_operator_token(raw_token: str | None) -> None:
-    if not raw_token:
-        return
-
-    AuthToken.objects.filter(key=raw_token).delete()
-
-
-def revoke_admin_token(raw_token: str | None) -> None:
-    if not raw_token:
-        return
-
-    AuthToken.objects.filter(key=raw_token).delete()

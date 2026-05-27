@@ -1,4 +1,8 @@
+import html
+import json
+
 from django.conf import settings
+from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -14,18 +18,24 @@ from notifications.serializers import (
 	NotificationStatusSerializer,
 	PublicFeedbackCreateSerializer,
 	PublicFeedbackItemSerializer,
+	PublicVkOAuthStartSerializer,
 	PublicVkSubscribeSerializer,
 	PublicWebPushSubscribeSerializer,
+	VkOAuthStartResponseSerializer,
 	WebPushPublicKeySerializer,
 	WebhookSubscriptionSerializer,
 )
 from notifications.services import (
+	build_vk_oauth_authorize_url,
+	complete_vk_oauth_subscription,
 	create_client_feedback,
 	get_client_notification_status,
+	is_vk_oauth_configured,
 	subscribe_vk,
 	subscribe_web_push,
 )
-from users.services import get_admin_by_token, parse_bearer_token
+from users.authentication import AuthTokenAuthentication
+from users.permissions import IsAdminUser
 
 
 class PublicFeedbackCreateView(APIView):
@@ -111,6 +121,123 @@ class PublicVkSubscribeView(APIView):
 		return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 
+class PublicVkOAuthStartView(APIView):
+	authentication_classes = []
+	permission_classes = []
+
+	@extend_schema(
+		request=PublicVkOAuthStartSerializer,
+		responses={status.HTTP_200_OK: VkOAuthStartResponseSerializer},
+	)
+	def post(self, request):
+		serializer = PublicVkOAuthStartSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+
+		if not is_vk_oauth_configured():
+			output_serializer = VkOAuthStartResponseSerializer(
+				{
+					'configured': False,
+					'auth_url': None,
+					'bot_url': getattr(settings, 'VK_BOT_URL', '') or None,
+				}
+			)
+			return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+		auth_url = build_vk_oauth_authorize_url(
+			queue_id=serializer.validated_data['queue_id'],
+			client_id=serializer.validated_data.get('client_id'),
+			ticket_id=serializer.validated_data.get('ticket_id'),
+			django_request=request,
+		)
+		output_serializer = VkOAuthStartResponseSerializer(
+			{
+				'configured': True,
+				'auth_url': auth_url,
+				'bot_url': getattr(settings, 'VK_BOT_URL', '') or None,
+			}
+		)
+		return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+class PublicVkOAuthCallbackView(APIView):
+	authentication_classes = []
+	permission_classes = []
+
+	def _html_response(
+		self,
+		*,
+		result_status: str,
+		message: str,
+		bot_url: str | None = None,
+	):
+		payload = json.dumps(
+			{
+				'source': 'queueflow-vk-oauth',
+				'status': result_status,
+				'message': message,
+				'bot_url': bot_url,
+			},
+			ensure_ascii=False,
+		).replace('</', '<\\/')
+		script_action = (
+			f"window.location.replace({json.dumps(bot_url)});"
+			if result_status == 'success' and bot_url
+			else 'window.setTimeout(function() { window.close(); }, 500);'
+		)
+		safe_message = html.escape(message)
+		html_content = f"""<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<title>VK</title>
+</head>
+<body>
+	<script>
+		(function() {{
+			var payload = {payload};
+			if (window.opener) {{
+				window.opener.postMessage(payload, "*");
+			}}
+			{script_action}
+		}}());
+	</script>
+	<p>{safe_message}</p>
+</body>
+</html>"""
+		return HttpResponse(html_content, content_type='text/html; charset=utf-8')
+
+	@extend_schema(exclude=True)
+	def get(self, request):
+		error = request.query_params.get('error')
+		if error:
+			return self._html_response(
+				result_status='error',
+				message=request.query_params.get('error_description') or 'VK авторизация отменена.',
+			)
+
+		code = request.query_params.get('code')
+		state = request.query_params.get('state')
+		if not code or not state:
+			return self._html_response(
+				result_status='error',
+				message='VK не вернул необходимые параметры авторизации.',
+			)
+
+		try:
+			complete_vk_oauth_subscription(code=code, state=state, django_request=request)
+		except Exception as exc:
+			return self._html_response(
+				result_status='error',
+				message=str(exc),
+			)
+
+		return self._html_response(
+			result_status='success',
+			message='VK подключен.',
+			bot_url=getattr(settings, 'VK_BOT_URL', '') or None,
+		)
+
+
 class PublicNotificationStatusView(APIView):
 	authentication_classes = []
 	permission_classes = []
@@ -134,12 +261,13 @@ class PublicNotificationStatusView(APIView):
 
 
 class AdminFeedbackItemViewSet(viewsets.ModelViewSet):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
 	queryset = FeedbackItem.objects.select_related('company', 'branch', 'queue').all()
 	serializer_class = AdminFeedbackItemSerializer
 
 	def _require_admin(self):
-		token = parse_bearer_token(self.request.headers.get('Authorization'))
-		return get_admin_by_token(token)
+		return self.request.user
 
 	def get_queryset(self):
 		admin_user = self._require_admin()
@@ -229,12 +357,13 @@ class AdminFeedbackItemViewSet(viewsets.ModelViewSet):
 
 
 class AdminWebhookSubscriptionViewSet(viewsets.ModelViewSet):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
 	queryset = WebhookSubscription.objects.select_related('company', 'queue').all()
 	serializer_class = WebhookSubscriptionSerializer
 
 	def _require_admin(self):
-		token = parse_bearer_token(self.request.headers.get('Authorization'))
-		return get_admin_by_token(token)
+		return self.request.user
 
 	def get_queryset(self):
 		admin_user = self._require_admin()

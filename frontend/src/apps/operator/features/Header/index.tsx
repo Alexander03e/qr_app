@@ -20,8 +20,8 @@ export const Header = () => {
 
   return (
     <Layout.Header className={styles.header}>
-      <Flex vertical gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
+      <Flex vertical gap={12} style={{ minWidth: 0 }}>
+        <Typography.Title level={4} ellipsis style={{ margin: 0 }}>
           {controller.activeQueue?.name || "Очередь"}
         </Typography.Title>
         <Typography.Text type="secondary">

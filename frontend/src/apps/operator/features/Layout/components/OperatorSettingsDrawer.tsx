@@ -8,7 +8,7 @@ export const OperatorSettingsDrawer = () => {
   return (
     <Drawer
       title="Настройки очереди"
-      width={460}
+      width="min(460px, 100vw)"
       open={controller.isSettingsOpen}
       onClose={() => controller.setIsSettingsOpen(false)}
     >

@@ -7,7 +7,14 @@ class Client(models.Model):
     vk_id = models.CharField(max_length=255, verbose_name='VK ID', null=True, blank=True)
     preferred_lang = models.CharField(max_length=10, verbose_name='Предпочитаемый язык', null=True, blank=True)
     phone = models.CharField(max_length=20, verbose_name='Телефон', null=True, blank=True)
-    branch_id = models.CharField(max_length=255, verbose_name='ID филиала', null=True, blank=True) #TODO: потом поменять на ForeignKey
+    branch = models.ForeignKey(
+        'companies.Branch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='clients',
+        verbose_name='Филиал',
+    )
     send_notification = models.BooleanField(default=False, verbose_name='Отправлять уведомления')
     consent_ad = models.BooleanField(default=False, verbose_name='Отправлять рекламу')
     device_id = models.CharField(max_length=255, verbose_name='ID устройства', null=True, blank=True, unique=True)

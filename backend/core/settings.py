@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from pathlib import Path
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -22,10 +26,10 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-o-j*vsiq0!h-mlghb(l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = [
-    host.strip() for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()
-]
+def get_csv_env(name: str, default: str = '') -> list[str]:
+    return [value.strip() for value in os.getenv(name, default).split(',') if value.strip()]
 
+ALLOWED_HOSTS = get_csv_env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend')
 
 # Application definition
 
@@ -55,6 +59,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,7 +69,13 @@ MIDDLEWARE = [
     'core.metrics_middleware.PrometheusMetricsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.getenv('DJANGO_CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
+CORS_ALLOWED_ORIGINS = get_csv_env('DJANGO_CORS_ALLOWED_ORIGINS')
+CSRF_TRUSTED_ORIGINS = get_csv_env('DJANGO_CSRF_TRUSTED_ORIGINS')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+SESSION_COOKIE_SECURE = os.getenv('DJANGO_SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+CSRF_COOKIE_SECURE = os.getenv('DJANGO_CSRF_COOKIE_SECURE', 'False').lower() == 'true'
 
 ROOT_URLCONF = 'core.urls'
 
@@ -96,7 +107,7 @@ DATABASES = {
         'USER': os.getenv('POSTGRES_USER', 'queueflow'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'queueflow'),
         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'PORT': os.getenv('POSTGRES_PORT', '5433'),
         'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE', '60')),
     }
 }
@@ -137,6 +148,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
 WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
@@ -144,6 +164,11 @@ WEB_PUSH_VAPID_SUBJECT = os.getenv('WEB_PUSH_VAPID_SUBJECT', 'mailto:admin@examp
 
 VK_BOT_ACCESS_TOKEN = os.getenv('VK_BOT_ACCESS_TOKEN', '')
 VK_API_VERSION = os.getenv('VK_API_VERSION', '5.199')
+VK_OAUTH_CLIENT_ID = os.getenv('VK_OAUTH_CLIENT_ID', '')
+VK_OAUTH_CLIENT_SECRET = os.getenv('VK_OAUTH_CLIENT_SECRET', '')
+VK_OAUTH_REDIRECT_URI = os.getenv('VK_OAUTH_REDIRECT_URI', '')
+VK_OAUTH_STATE_MAX_AGE_SECONDS = int(os.getenv('VK_OAUTH_STATE_MAX_AGE_SECONDS', '900'))
+VK_BOT_URL = os.getenv('VK_BOT_URL', '')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

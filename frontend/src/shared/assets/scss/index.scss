@@ -41,3 +41,78 @@ body {
 	font-family: var(--font-family-base);
 	min-height: 0px;
 }
+
+.admin-dashboard {
+	min-height: 100vh;
+	min-width: 0;
+}
+
+.admin-dashboard__main,
+.admin-dashboard__content-inner {
+	min-width: 0;
+}
+
+.admin-dashboard__content {
+	min-width: 0;
+	overflow-x: hidden;
+	padding: 24px;
+}
+
+.admin-dashboard__sidebar {
+	border-right: 1px solid #e5e7eb;
+}
+
+.admin-dashboard__sidebar-header {
+	overflow-wrap: anywhere;
+	padding: 16px;
+}
+
+.admin-dashboard__header {
+	align-items: center;
+	background: #fff;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	height: auto;
+	justify-content: space-between;
+	min-height: 64px;
+	min-width: 0;
+	padding: 12px 24px;
+}
+
+.admin-dashboard__header-profile {
+	min-width: 0;
+}
+
+.admin-dashboard__header-text {
+	display: inline-block;
+	max-width: 240px;
+}
+
+.admin-dashboard__language-select {
+	width: 120px;
+}
+
+@media (max-width: 768px) {
+	.admin-dashboard__content {
+		padding: 16px;
+	}
+
+	.admin-dashboard__header {
+		padding: 12px 16px;
+	}
+}
+
+@media (max-width: 520px) {
+	.admin-dashboard__content {
+		padding: 12px;
+	}
+
+	.admin-dashboard__header {
+		align-items: flex-start;
+	}
+
+	.admin-dashboard__header-text {
+		max-width: calc(100vw - 96px);
+	}
+}

@@ -17,5 +17,14 @@ template_xelatex/*.xdv
 template_xelatex/_minted/
 
 *
-!/frontend/*
-!/backend/*
+!/docker-compose.yml
+!/DEPLOY.md
+!/текущий_функционал.md
+!/.github/
+!/.github/**
+!/deploy/
+!/deploy/**
+!/frontend/
+!/frontend/Dockerfile
+!/frontend/nginx.conf
+!/frontend/.dockerignore

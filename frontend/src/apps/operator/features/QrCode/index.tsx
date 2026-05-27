@@ -8,8 +8,19 @@ export const QrCode = () => {
   const link = `${origin}${PATHS.CLIENT}/${queueId}`;
 
   return (
-    <Flex vertical>
-      <Button type="link" href={link} target="_blank">
+    <Flex vertical align="center" gap={8} style={{ minWidth: 0, width: "100%" }}>
+      <Button
+        type="link"
+        href={link}
+        target="_blank"
+        style={{
+          height: "auto",
+          maxWidth: "100%",
+          textAlign: "center",
+          whiteSpace: "normal",
+          wordBreak: "break-all",
+        }}
+      >
         {link}
       </Button>
       <QRCode value={link} />

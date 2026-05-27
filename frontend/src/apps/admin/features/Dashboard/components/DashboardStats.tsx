@@ -7,7 +7,7 @@ export const DashboardStats = () => {
   const { dashboard } = useAdminDashboardContext();
 
   return (
-    <Space size={16} style={{ marginBottom: 20 }}>
+    <Space size={[16, 12]} wrap style={{ marginBottom: 20, width: "100%" }}>
       <Statistic
         title={t("admin.stats.operators")}
         value={dashboard.operators.length}

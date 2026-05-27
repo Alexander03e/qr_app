@@ -84,6 +84,18 @@ class PublicVkSubscribeSerializer(serializers.Serializer):
         return normalized_value
 
 
+class PublicVkOAuthStartSerializer(serializers.Serializer):
+    queue_id = serializers.IntegerField()
+    client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    ticket_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class VkOAuthStartResponseSerializer(serializers.Serializer):
+    configured = serializers.BooleanField()
+    auth_url = serializers.URLField(allow_null=True)
+    bot_url = serializers.URLField(allow_blank=True, allow_null=True)
+
+
 class ClientNotificationSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClientNotificationSubscription

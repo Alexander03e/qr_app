@@ -1,5 +1,5 @@
 import type { AdminProfile } from "@apps/admin/helpers/auth";
-import { Layout } from "antd";
+import { Flex, Layout } from "antd";
 import { useNavigate } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 
@@ -26,15 +26,17 @@ export const AdminDashboard = ({ admin }: AdminDashboardProps) => {
 
   return (
     <AdminDashboardContext.Provider value={{ dashboard, actions }}>
-      <Layout style={{ minHeight: "100vh" }}>
+      <Layout className="admin-dashboard">
         <DashboardSidebar />
 
-        <Layout>
+        <Layout className="admin-dashboard__main">
           <DashboardHeader />
 
-          <Layout.Content style={{ padding: 24 }}>
-            <DashboardStats />
-            <Outlet />
+          <Layout.Content className="admin-dashboard__content">
+            <Flex vertical className="admin-dashboard__content-inner">
+              <DashboardStats />
+              <Outlet />
+            </Flex>
           </Layout.Content>
         </Layout>
 

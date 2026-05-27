@@ -10,7 +10,8 @@ from rest_framework.views import APIView
 
 from analytics.serializers import AdminMetricsSerializer
 from analytics.services import MetricsFilters, company_admin_metrics, empty_business_metrics
-from users.services import get_admin_by_token, parse_bearer_token
+from users.authentication import AuthTokenAuthentication
+from users.permissions import IsAdminUser
 
 
 def _parse_int_filter(params, name: str) -> int | None:
@@ -59,6 +60,9 @@ def _build_metrics_filters(params) -> MetricsFilters:
 
 
 class AdminMetricsView(APIView):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
+
 	@extend_schema(
 		parameters=[
 			OpenApiParameter('branch_id', int, required=False, description='Фильтр по филиалу'),
@@ -70,8 +74,7 @@ class AdminMetricsView(APIView):
 		responses={status.HTTP_200_OK: AdminMetricsSerializer},
 	)
 	def get(self, request):
-		token = parse_bearer_token(request.headers.get('Authorization'))
-		admin_user = get_admin_by_token(token)
+		admin_user = request.user
 		filters = _build_metrics_filters(request.query_params)
 
 		if not admin_user.company_id:

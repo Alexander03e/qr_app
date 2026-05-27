@@ -4,6 +4,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 
 class NotificationEventType(models.TextChoices):
 	TICKET_CALLED = 'ticket.called', 'Ticket called'
+	TICKET_STATUS_CHANGED = 'ticket.status_changed', 'Ticket status changed'
 
 
 class NotificationChannelType(models.TextChoices):

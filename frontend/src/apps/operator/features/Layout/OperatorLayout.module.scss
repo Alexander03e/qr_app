@@ -1,11 +1,17 @@
 .layout {
   min-height: 100vh;
+  min-width: 0;
   background: #f3f5f8;
+}
+
+.main {
+  min-width: 0;
 }
 
 .sider {
   border-right: 1px solid #e5e7eb;
   padding: 12px;
+  overflow: auto;
 }
 
 .siderTop {
@@ -16,9 +22,18 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .content {
+  min-width: 0;
+  overflow-x: hidden;
   padding: 20px;
 }
 
@@ -29,4 +44,34 @@
   justify-content: center;
   align-items: center;
   gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sider {
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 0;
+    flex: 0 0 auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .content {
+    padding: 12px;
+  }
+
+  .emptyState {
+    padding: 24px;
+    text-align: center;
+  }
 }

@@ -1,15 +1,32 @@
 .header {
+  align-items: center;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
+  min-width: 0;
   padding: 16px 20px;
   height: auto;
 }
 
 .headerActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
 }

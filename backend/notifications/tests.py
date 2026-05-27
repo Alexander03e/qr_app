@@ -1,5 +1,9 @@
 from datetime import timedelta
+import json
+from unittest.mock import patch
+from urllib import parse
 
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -11,8 +15,12 @@ from notifications.models import (
 	FeedbackStatus,
 	FeedbackType,
 	NotificationChannelType,
+	NotificationDeliveryStatus,
+	NotificationEventType,
+	WebhookDelivery,
 	WebhookSubscription,
 )
+from notifications.services import notify_ticket_status_changed
 from clients.models import Client
 from queues.models import Queue, QueueStatus, Ticket
 from users.models import AuthToken, Role, User
@@ -153,6 +161,75 @@ class AdminFeedbackApiTests(APITestCase):
 			).exists()
 		)
 
+	def test_vk_oauth_start_reports_missing_config(self):
+		response = self.client.post(
+			'/api/v1/notifications/vk/oauth/start/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+			},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertFalse(response.data['configured'])
+		self.assertIsNone(response.data['auth_url'])
+
+	@override_settings(
+		VK_OAUTH_CLIENT_ID='123456',
+		VK_OAUTH_CLIENT_SECRET='secret',
+		VK_BOT_URL='https://vk.me/queueflow_test',
+	)
+	def test_vk_oauth_callback_subscribes_client(self):
+		start_response = self.client.post(
+			'/api/v1/notifications/vk/oauth/start/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+			},
+			format='json',
+		)
+		self.assertEqual(start_response.status_code, status.HTTP_200_OK)
+		self.assertTrue(start_response.data['configured'])
+
+		auth_url = start_response.data['auth_url']
+		state = parse.parse_qs(parse.urlparse(auth_url).query)['state'][0]
+
+		class FakeVkResponse:
+			status = 200
+
+			def __enter__(self):
+				return self
+
+			def __exit__(self, exc_type, exc, traceback):
+				return False
+
+			def read(self):
+				return json.dumps({'access_token': 'token', 'user_id': 987654321}).encode('utf-8')
+
+		with patch('notifications.services.request.urlopen', return_value=FakeVkResponse()):
+			callback_response = self.client.get(
+				'/api/v1/notifications/vk/oauth/callback/',
+				{
+					'code': 'vk-code',
+					'state': state,
+				},
+			)
+
+		self.assertEqual(callback_response.status_code, status.HTTP_200_OK)
+		self.client_obj.refresh_from_db()
+		self.assertEqual(self.client_obj.vk_id, '987654321')
+		self.assertTrue(self.client_obj.send_notification)
+		self.assertTrue(
+			ClientNotificationSubscription.objects.filter(
+				client=self.client_obj,
+				queue=self.queue,
+				channel=NotificationChannelType.VK,
+				vk_user_id='987654321',
+				is_active=True,
+			).exists()
+		)
+
 	def test_admin_can_create_webhook_subscription_for_company_queue(self):
 		response = self.client.post(
 			'/api/v1/admin/webhook-subscriptions/',
@@ -173,3 +250,76 @@ class AdminFeedbackApiTests(APITestCase):
 		self.assertEqual(webhook_subscription.company_id, self.company.id)
 		self.assertEqual(webhook_subscription.queue_id, self.queue.id)
 		self.assertEqual(webhook_subscription.created_by_user_id, self.admin.id)
+
+	def test_ticket_status_change_sends_webhook_delivery(self):
+		WebhookSubscription.objects.create(
+			company=self.company,
+			queue=self.queue,
+			name='CRM интеграция',
+			target_url='https://crm.example.test/webhooks/queueflow',
+			event_types=[NotificationEventType.TICKET_STATUS_CHANGED.value],
+			is_active=True,
+		)
+		self.ticket.status = QueueStatus.IN_SERVICE
+		self.ticket.save(update_fields=['status', 'updated_at'])
+
+		class FakeWebhookResponse:
+			status = 200
+
+			def __enter__(self):
+				return self
+
+			def __exit__(self, exc_type, exc, traceback):
+				return False
+
+			def read(self):
+				return b'{"ok": true}'
+
+		with patch('notifications.services.request.urlopen', return_value=FakeWebhookResponse()):
+			notify_ticket_status_changed(
+				ticket_id=self.ticket.id,
+				previous_status=QueueStatus.CALLED,
+				new_status=QueueStatus.IN_SERVICE,
+			)
+
+		delivery = WebhookDelivery.objects.get()
+		self.assertEqual(delivery.event_type, NotificationEventType.TICKET_STATUS_CHANGED)
+		self.assertEqual(delivery.status, NotificationDeliveryStatus.SENT)
+		self.assertEqual(delivery.payload['event'], NotificationEventType.TICKET_STATUS_CHANGED)
+		self.assertEqual(delivery.payload['status_change']['previous_status'], QueueStatus.CALLED)
+		self.assertEqual(delivery.payload['status_change']['new_status'], QueueStatus.IN_SERVICE)
+
+	def test_called_status_change_keeps_legacy_ticket_called_webhook_filter(self):
+		WebhookSubscription.objects.create(
+			company=self.company,
+			queue=self.queue,
+			name='CRM legacy',
+			target_url='https://crm.example.test/webhooks/queueflow',
+			event_types=[NotificationEventType.TICKET_CALLED.value],
+			is_active=True,
+		)
+		self.ticket.status = QueueStatus.CALLED
+		self.ticket.save(update_fields=['status', 'updated_at'])
+
+		class FakeWebhookResponse:
+			status = 200
+
+			def __enter__(self):
+				return self
+
+			def __exit__(self, exc_type, exc, traceback):
+				return False
+
+			def read(self):
+				return b'{"ok": true}'
+
+		with patch('notifications.services.request.urlopen', return_value=FakeWebhookResponse()):
+			notify_ticket_status_changed(
+				ticket_id=self.ticket.id,
+				previous_status=QueueStatus.WAITING,
+				new_status=QueueStatus.CALLED,
+			)
+
+		delivery = WebhookDelivery.objects.get()
+		self.assertEqual(delivery.event_type, NotificationEventType.TICKET_CALLED)
+		self.assertEqual(delivery.status, NotificationDeliveryStatus.SENT)

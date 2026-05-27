@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -21,7 +22,7 @@ class OperatorAuthTests(APITestCase):
 		self.operator = User.objects.create(
 			fullname='Operator One',
 			email='operator-login@example.com',
-			password='password123',
+			password=make_password('password123'),
 			role=Role.OPERATOR,
 			is_active=True,
 			company=self.company,

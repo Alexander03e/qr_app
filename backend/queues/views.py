@@ -2,6 +2,7 @@ from rest_framework import mixins, viewsets
 from rest_framework import status as drf_status
 from rest_framework.decorators import action
 from rest_framework.exceptions import AuthenticationFailed, NotFound, PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 
@@ -16,7 +17,9 @@ from queues.services import (
     skip_one_ahead,
     update_ticket,
 )
-from users.services import get_admin_by_token, get_operator_by_token, parse_bearer_token
+from users.authentication import AuthTokenAuthentication
+from users.models import Role
+from users.permissions import IsAdminUser, IsOperatorUser, get_authenticated_user
 from .models import Queue, Ticket
 from .serializers import (
     AdminQueueSerializer,
@@ -32,8 +35,10 @@ from .serializers import (
 
 
 def require_operator(request):
-    token = parse_bearer_token(request.headers.get('Authorization'))
-    return get_operator_by_token(token)
+    user = get_authenticated_user(request)
+    if user is None or user.role != Role.OPERATOR:
+        raise AuthenticationFailed('Требуется токен оператора.')
+    return user
 
 
 def require_operator_for_queue(request, queue_id: int):
@@ -61,6 +66,8 @@ def require_operator_for_ticket(request, ticket_id: int):
 
 
 class QueueViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    authentication_classes = [AuthTokenAuthentication]
+    permission_classes = [AllowAny]
     queryset = Queue.objects.all()
     serializer_class = QueueSerializer
 
@@ -126,12 +133,13 @@ class QueueViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
 
 class AdminQueueViewSet(viewsets.ModelViewSet):
+    authentication_classes = [AuthTokenAuthentication]
+    permission_classes = [IsAdminUser]
     queryset = Queue.objects.select_related('branch').all().order_by('id')
     serializer_class = AdminQueueSerializer
 
     def _require_admin(self):
-        token = parse_bearer_token(self.request.headers.get('Authorization'))
-        return get_admin_by_token(token)
+        return self.request.user
 
     def get_queryset(self):
         admin_user = self._require_admin()
@@ -190,12 +198,13 @@ class AdminQueueViewSet(viewsets.ModelViewSet):
 
 
 class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
+    authentication_classes = [AuthTokenAuthentication]
+    permission_classes = [IsOperatorUser]
     queryset = Queue.objects.select_related('branch').all().order_by('id')
     serializer_class = AdminQueueSerializer
 
     def _require_operator(self):
-        token = parse_bearer_token(self.request.headers.get('Authorization'))
-        return get_operator_by_token(token)
+        return self.request.user
 
     def get_queryset(self):
         operator = self._require_operator()
@@ -218,21 +227,23 @@ class TicketViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
+    authentication_classes = [AuthTokenAuthentication]
+    permission_classes = [AllowAny]
     queryset = Ticket.objects.select_related('queue', 'client').all()
     serializer_class = TicketSerializer
 
     def _staff_queryset(self, queryset):
-        token = parse_bearer_token(self.request.headers.get('Authorization'))
-        if not token:
+        user = get_authenticated_user(self.request)
+        if user is None:
             raise AuthenticationFailed('Требуется токен сотрудника.')
 
-        try:
-            operator = get_operator_by_token(token)
-        except AuthenticationFailed:
-            admin_user = get_admin_by_token(token)
-            return queryset.filter(queue__branch__company_id=admin_user.company_id)
+        if user.role == Role.ADMIN:
+            return queryset.filter(queue__branch__company_id=user.company_id)
 
-        return queryset.filter(queue_id__in=operator.assigned_queues.values('id'))
+        if user.role == Role.OPERATOR:
+            return queryset.filter(queue_id__in=user.assigned_queues.values('id'))
+
+        raise AuthenticationFailed('Требуется токен сотрудника.')
 
     def get_queryset(self):
         queryset = super().get_queryset()

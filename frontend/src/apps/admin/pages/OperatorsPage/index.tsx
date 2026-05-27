@@ -40,7 +40,8 @@ export const OperatorsPage = () => {
         title: t("admin.operators.branch"),
         dataIndex: "branch",
         key: "branch",
-        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+        render: (value: number | null) =>
+          value ? (branchNameById.get(value) ?? value) : "-",
       },
       {
         title: "Очереди",
@@ -108,7 +109,7 @@ export const OperatorsPage = () => {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
+      <Space wrap style={{ marginBottom: 12 }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -123,6 +124,7 @@ export const OperatorsPage = () => {
         columns={columns}
         dataSource={dashboard.operators}
         pagination={false}
+        scroll={{ x: "max-content" }}
       />
     </>
   );

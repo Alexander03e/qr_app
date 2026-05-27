@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NotificationSettingsModal } from "./components/NotificationSettingsModal";
 import styles from "./HomePage.module.scss";
+import { useBrowserTicketNotification } from "./hooks/useBrowserTicketNotification";
 import { useClientQueueController } from "./hooks/useClientQueueController";
 
 export const HomePage = () => {
@@ -26,8 +27,11 @@ export const HomePage = () => {
     isSkipPending,
     percent,
     queueId,
+    queueName,
     ticket,
   } = useClientQueueController();
+
+  useBrowserTicketNotification({ queueId, queueName, ticket });
 
   return (
     <Flex gap={16} vertical>

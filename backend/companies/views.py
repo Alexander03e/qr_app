@@ -4,13 +4,16 @@ from rest_framework.exceptions import ValidationError
 
 from companies.models import Branch, Company
 from companies.serializers import AdminBranchSerializer, AdminCompanySerializer
-from users.services import get_admin_by_token, parse_bearer_token
+from users.authentication import AuthTokenAuthentication
+from users.permissions import IsAdminUser
 
 
 class BaseAdminViewSet(viewsets.ModelViewSet):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
+
 	def _require_admin(self):
-		token = parse_bearer_token(self.request.headers.get('Authorization'))
-		return get_admin_by_token(token)
+		return self.request.user
 
 
 class AdminCompanyViewSet(
@@ -19,12 +22,13 @@ class AdminCompanyViewSet(
 	mixins.UpdateModelMixin,
 	viewsets.GenericViewSet,
 ):
+	authentication_classes = [AuthTokenAuthentication]
+	permission_classes = [IsAdminUser]
 	serializer_class = AdminCompanySerializer
 	queryset = Company.objects.all().order_by('id')
 
 	def _require_admin(self):
-		token = parse_bearer_token(self.request.headers.get('Authorization'))
-		return get_admin_by_token(token)
+		return self.request.user
 
 	def get_queryset(self):
 		admin_user = self._require_admin()

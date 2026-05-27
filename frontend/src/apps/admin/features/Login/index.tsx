@@ -27,7 +27,9 @@ export const AdminLogin = () => {
   };
 
   return (
-    <Card style={{ width: 420, margin: "56px auto" }}>
+    <Card
+      style={{ width: "min(420px, calc(100vw - 32px))", margin: "56px auto" }}
+    >
       <Typography.Title level={3}>{t("admin.login.title")}</Typography.Title>
       <Form layout="vertical" onFinish={onFinish}>
         <Form.Item

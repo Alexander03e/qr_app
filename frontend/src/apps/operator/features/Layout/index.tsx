@@ -23,7 +23,7 @@ export const OperatorLayout = ({ children }: OperatorLayoutProps) => {
     <Layout className={styles.layout}>
       <OperatorSidebar />
 
-      <Layout>
+      <Layout className={styles.main}>
         <Header />
 
         <Layout.Content className={styles.content}>{children}</Layout.Content>

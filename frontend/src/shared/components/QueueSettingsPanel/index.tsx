@@ -169,7 +169,7 @@ export const QueueSettingsPanel = ({
         <Input />
       </Form.Item>
 
-      <Space>
+      <Space wrap>
         <Button type="primary" htmlType="submit" loading={loading}>
           {submitText}
         </Button>

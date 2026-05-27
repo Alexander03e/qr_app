@@ -74,7 +74,7 @@ export const QueueDetailsModal = () => {
       open={dashboard.queueDetailsOpen}
       onCancel={actions.closeQueueDetails}
       footer={null}
-      width={860}
+      width="min(860px, calc(100vw - 32px))"
     >
       {selectedQueue ? (
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
@@ -108,9 +108,9 @@ export const QueueDetailsModal = () => {
           <Typography.Title level={5} style={{ marginBottom: 0 }}>
             {t("admin.queues.assignedOperators")}
           </Typography.Title>
-          <Space>
+          <Space wrap>
             <Select
-              style={{ minWidth: 280 }}
+              style={{ minWidth: 280, maxWidth: "100%" }}
               placeholder={t("admin.queues.selectOperator")}
               value={dashboard.selectedOperatorForQueue ?? undefined}
               onChange={(value) =>
@@ -135,6 +135,7 @@ export const QueueDetailsModal = () => {
             dataSource={dashboard.selectedQueueOperators}
             pagination={false}
             columns={operatorColumns}
+            scroll={{ x: "max-content" }}
           />
 
           <Typography.Title level={5} style={{ marginBottom: 0 }}>

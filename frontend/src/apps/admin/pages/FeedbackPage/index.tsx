@@ -57,13 +57,15 @@ export const FeedbackPage = () => {
         title: t("admin.feedback.branch"),
         dataIndex: "branch",
         key: "branch",
-        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+        render: (value: number | null) =>
+          value ? (branchNameById.get(value) ?? value) : "-",
       },
       {
         title: t("admin.feedback.queue"),
         dataIndex: "queue",
         key: "queue",
-        render: (value: number | null) => (value ? queueNameById.get(value) ?? value : "-"),
+        render: (value: number | null) =>
+          value ? (queueNameById.get(value) ?? value) : "-",
       },
       {
         title: t("admin.common.actions"),
@@ -94,7 +96,7 @@ export const FeedbackPage = () => {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
+      <Space wrap style={{ marginBottom: 12 }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -109,6 +111,7 @@ export const FeedbackPage = () => {
         columns={columns}
         dataSource={dashboard.feedback}
         pagination={false}
+        scroll={{ x: "max-content" }}
       />
     </>
   );

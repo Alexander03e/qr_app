@@ -29,7 +29,8 @@ export const QueuesPage = () => {
         title: t("admin.queues.branch"),
         dataIndex: "branch",
         key: "branch",
-        render: (value: number | null) => (value ? branchNameById.get(value) ?? value : "-"),
+        render: (value: number | null) =>
+          value ? (branchNameById.get(value) ?? value) : "-",
       },
       {
         title: "Язык",
@@ -102,7 +103,7 @@ export const QueuesPage = () => {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
+      <Space wrap style={{ marginBottom: 12 }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -117,6 +118,7 @@ export const QueuesPage = () => {
         columns={columns}
         dataSource={dashboard.queues}
         pagination={false}
+        scroll={{ x: "max-content" }}
         onRow={(row) => ({
           onClick: () => actions.openQueueDetails(row),
         })}
