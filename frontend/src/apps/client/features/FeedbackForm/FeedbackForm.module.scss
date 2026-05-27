@@ -1,0 +1,21 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--primary-color-mask-10);
+}
+
+.title {
+  margin: 0 !important;
+}
+
+.done {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--success-color-mask-10);
+  border-radius: 8px;
+  color: var(--success-color);
+  background: var(--success-color-mask-10);
+}
