@@ -1,8 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/queueflow}"
+APP_DIR="${APP_DIR:-/home/develop/queueflow}"
 DOMAIN="${DOMAIN:-cfifeg1.fvds.ru}"
+
+install_compose_plugin_from_github() {
+  local arch
+
+  case "$(uname -m)" in
+    x86_64 | amd64)
+      arch="x86_64"
+      ;;
+    aarch64 | arm64)
+      arch="aarch64"
+      ;;
+    *)
+      echo "Unsupported CPU architecture for Docker Compose: $(uname -m)"
+      exit 1
+      ;;
+  esac
+
+  mkdir -p /usr/local/lib/docker/cli-plugins
+  curl -fsSL \
+    "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${arch}" \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
+  chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+}
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run as root: sudo APP_DIR=${APP_DIR} DOMAIN=${DOMAIN} bash $0"
@@ -17,7 +40,16 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 if ! docker compose version >/dev/null 2>&1; then
-  apt-get install -y docker-compose-plugin
+  apt-get update
+  if ! apt-get install -y docker-compose-plugin; then
+    echo "docker-compose-plugin is unavailable in apt, installing Compose CLI plugin from GitHub."
+    install_compose_plugin_from_github
+  fi
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose plugin installation failed."
+  exit 1
 fi
 
 systemctl enable --now docker

@@ -41,20 +41,20 @@ ssh root@SERVER_IP
 ```bash
 apt-get update
 apt-get install -y git
-git clone https://github.com/Alexander03e/qr_app.git /opt/queueflow-src
-bash /opt/queueflow-src/deploy/scripts/bootstrap-server.sh
+git clone https://github.com/Alexander03e/qr_app.git /home/develop/queueflow-src
+bash /home/develop/queueflow-src/deploy/scripts/bootstrap-server.sh
 ```
 
 5. Скопируй deploy-комплект:
 
 ```bash
-mkdir -p /opt/queueflow
-cp -r /opt/queueflow-src/deploy/. /opt/queueflow/
-cd /opt/queueflow
+mkdir -p /home/develop/queueflow
+cp -r /home/develop/queueflow-src/deploy/. /home/develop/queueflow/
+cd /home/develop/queueflow
 cp .env.example .env
 ```
 
-6. Заполни `/opt/queueflow/.env`.
+6. Заполни `/home/develop/queueflow/.env`.
 
 Обязательно поменяй:
 
@@ -80,13 +80,13 @@ docker login ghcr.io -u Alexander03e
 8. Запусти приложение:
 
 ```bash
-bash /opt/queueflow/scripts/deploy.sh
+bash /home/develop/queueflow/scripts/deploy.sh
 ```
 
 9. Проверь:
 
 ```bash
-docker compose -f /opt/queueflow/compose.prod.yml ps
+docker compose -f /home/develop/queueflow/compose.prod.yml ps
 curl -I http://cfifeg1.fvds.ru
 ```
 
@@ -106,7 +106,7 @@ apt-get install -y certbot python3-certbot-nginx
 certbot --nginx -d cfifeg1.fvds.ru
 ```
 
-После включения HTTPS в `/opt/queueflow/.env` можно выставить:
+После включения HTTPS в `/home/develop/queueflow/.env` можно выставить:
 
 ```bash
 DJANGO_CSRF_TRUSTED_ORIGINS=https://cfifeg1.fvds.ru
@@ -118,8 +118,24 @@ DJANGO_CSRF_COOKIE_SECURE=True
 Затем применить:
 
 ```bash
-bash /opt/queueflow/scripts/deploy.sh
+bash /home/develop/queueflow/scripts/deploy.sh
 ```
+
+## Если не находится docker-compose-plugin
+
+На некоторых чистых серверах apt может вывести `E: Unable to locate package docker-compose-plugin`. Обновленный `deploy/scripts/bootstrap-server.sh` в таком случае скачает Compose CLI plugin напрямую из официальных релизов Docker Compose на GitHub.
+
+Если нужно починить текущую сессию без повторного запуска всего bootstrap-скрипта:
+
+```bash
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+```
+
+Для ARM-сервера вместо `docker-compose-linux-x86_64` используй `docker-compose-linux-aarch64`.
 
 ## Последующие обновления
 
@@ -131,7 +147,7 @@ bash /opt/queueflow/scripts/deploy.sh
 4. На сервере выполнить:
 
 ```bash
-cd /opt/queueflow
+cd /home/develop/queueflow
 bash scripts/deploy.sh
 ```
 

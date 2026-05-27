@@ -19,7 +19,6 @@ template_xelatex/_minted/
 *
 !/docker-compose.yml
 !/DEPLOY.md
-!/текущий_функционал.md
 !/.github/
 !/.github/**
 !/deploy/
