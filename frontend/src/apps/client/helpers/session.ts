@@ -34,6 +34,22 @@ const hashToHex = (value: string): string => {
   return Math.abs(hash).toString(16);
 };
 
+const generateQueueTokenValue = (): string => {
+  const browserCrypto = globalThis.crypto;
+
+  if (typeof browserCrypto?.randomUUID === "function") {
+    return browserCrypto.randomUUID().replace(/-/g, "");
+  }
+
+  if (typeof browserCrypto?.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    browserCrypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+};
+
 export const getOrCreateDeviceId = (): string => {
   const storedValue = localStorage.getItem(CLIENT_DEVICE_ID_STORAGE_KEY);
   if (storedValue) {
@@ -53,7 +69,7 @@ export const getOrCreateQueueToken = (): string => {
     return storedValue;
   }
 
-  const generatedToken = `qt-${crypto.randomUUID().replace(/-/g, "")}`;
+  const generatedToken = `qt-${generateQueueTokenValue()}`;
   localStorage.setItem(CLIENT_QUEUE_TOKEN_STORAGE_KEY, generatedToken);
   return generatedToken;
 };
