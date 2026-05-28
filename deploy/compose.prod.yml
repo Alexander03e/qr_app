@@ -14,6 +14,8 @@ services:
 
   backend:
     image: ${BACKEND_IMAGE}
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     env_file:
       - ${QUEUEFLOW_ENV_FILE:-.env}
     environment:
@@ -28,6 +30,8 @@ services:
 
   frontend:
     image: ${FRONTEND_IMAGE}
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     depends_on:
       - backend
     ports:
@@ -46,6 +50,18 @@ services:
       - backend
     ports:
       - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_CONFIG_PATH:-/root/.docker/config.json}:/config.json:ro
+    command:
+      - "--cleanup"
+      - "--label-enable"
+      - "--interval"
+      - "${WATCHTOWER_INTERVAL_SECONDS:-300}"
     restart: unless-stopped
 
 volumes:
