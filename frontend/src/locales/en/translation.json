@@ -132,6 +132,7 @@
     "tickets": {
       "waitingCount": "Total waiting: {{count}}",
       "empty": "No waiting tickets",
+      "addManual": "Add ticket",
       "invite": "Invite",
       "remove": "Remove",
       "needActionTitle": "Current ticket exists",

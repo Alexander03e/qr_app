@@ -8,6 +8,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serial
 
 from queues.services import (
     append_to_queue,
+    create_manual_ticket,
     delete_tickets_from_queue,
     get_queue_snapshot,
     invite_ticket_by_id,
@@ -111,6 +112,32 @@ class QueueViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
                 'queue_snapshot': snapshot_serializer.data,
             },
             status=drf_status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        responses={
+            drf_status.HTTP_201_CREATED: inline_serializer(
+                name='ManualTicketResponse',
+                fields={
+                    'ticket': TicketSerializer(),
+                    'queue_snapshot': QueueSnapshotSerializer(),
+                },
+            )
+        },
+    )
+    @action(detail=True, methods=['post'], url_path='manual-ticket')
+    def manual_ticket(self, request, pk=None):
+        require_operator_for_queue(request, int(pk))
+        ticket = create_manual_ticket(queue_id=int(pk))
+        snapshot = get_queue_snapshot(queue_id=pk)
+        snapshot_serializer = QueueSnapshotSerializer(snapshot)
+
+        return Response(
+            {
+                'ticket': TicketSerializer(ticket).data,
+                'queue_snapshot': snapshot_serializer.data,
+            },
+            status=drf_status.HTTP_201_CREATED,
         )
 
     @extend_schema(

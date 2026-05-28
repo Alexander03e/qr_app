@@ -352,6 +352,7 @@ def join_queue(
     client_id: str | None = None,
     queue_token: str | None = None,
     client_data: dict | None = None,
+    enforce_clients_limit: bool = True,
 ) -> Ticket:
     with transaction.atomic():
         try:
@@ -383,7 +384,7 @@ def join_queue(
                 }
             )
 
-        if queue.clients_limit is not None:
+        if enforce_clients_limit and queue.clients_limit is not None:
             active_tickets_count = queue.tickets.filter(
                 status__in=[QueueStatus.WAITING, QueueStatus.CALLED, QueueStatus.IN_SERVICE],
             ).count()
@@ -397,6 +398,15 @@ def join_queue(
             client_id=client.id,
             initial_ticket_number=initial_ticket_number,
         )
+
+
+def create_manual_ticket(queue_id: int) -> Ticket:
+    return join_queue(
+        queue_id=queue_id,
+        client_data={'name': 'Клиент без телефона'},
+        enforce_clients_limit=False,
+    )
+
 
 def update_ticket(
     ticket_id: int,

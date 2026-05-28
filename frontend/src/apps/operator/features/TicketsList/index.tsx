@@ -3,6 +3,7 @@ import { queueMutationOptions } from "@shared/entities/queue/api/mutations";
 import { makeRequest } from "@shared/helper/handler";
 import { useMutation } from "@tanstack/react-query";
 import { Button, Empty, Modal, Space, Typography } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import styles from "./TicketsList.module.scss";
@@ -29,6 +30,23 @@ export const TicketsList = () => {
       },
     }),
   );
+
+  const { mutateAsync: createManualTicket, isPending: isManualTicketPending } =
+    useMutation(
+      queueMutationOptions.createManualTicket({
+        onSuccess: (data) => {
+          setQueue(data.queue_snapshot);
+        },
+      }),
+    );
+
+  const handleCreateManualTicket = () => {
+    if (!queueData?.queue_id) {
+      return;
+    }
+
+    makeRequest(createManualTicket(queueData.queue_id));
+  };
 
   const handleInviteById = (ticketId: number) => {
     if (queueData?.current_ticket) {
@@ -64,6 +82,14 @@ export const TicketsList = () => {
             count: queueData?.waiting_count ?? 0,
           })}
         </Typography.Text>
+        <Button
+          disabled={!queueData?.queue_id}
+          icon={<PlusOutlined />}
+          loading={isManualTicketPending}
+          onClick={handleCreateManualTicket}
+        >
+          {t("operator.tickets.addManual")}
+        </Button>
       </div>
       {Boolean(queueData?.waiting_count && queueData?.waiting_count > 0) && (
         <div className={styles.list}>

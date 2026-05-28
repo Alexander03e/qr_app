@@ -5,6 +5,7 @@ import type {
   InviteNextResponse,
   InviteByIdRequest,
   JoinQueueRequest,
+  ManualTicketResponse,
   QueueDeleteTicketsRequest,
   QueueDeleteTicketsResponse,
   QueueItemResponse,
@@ -54,6 +55,10 @@ class QueuesApi {
 
   async inviteNext(queueId: number): Promise<InviteNextResponse> {
     return (await $api.post(`/queues/${queueId}/invite-next/`)).data;
+  }
+
+  async createManualTicket(queueId: number): Promise<ManualTicketResponse> {
+    return (await $api.post(`/queues/${queueId}/manual-ticket/`)).data;
   }
 
   async deleteTicketsFromQueue(

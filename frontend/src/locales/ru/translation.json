@@ -134,6 +134,7 @@
     "tickets": {
       "waitingCount": "Всего в очереди: {{count}}",
       "empty": "Ожидающих талонов нет",
+      "addManual": "Добавить талон",
       "invite": "Пригласить",
       "remove": "Удалить",
       "needActionTitle": "Есть текущий талон",

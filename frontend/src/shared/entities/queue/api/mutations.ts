@@ -5,6 +5,7 @@ import type {
   InviteByIdRequest,
   InviteNextResponse,
   JoinQueueRequest,
+  ManualTicketResponse,
   TicketItemResponse,
   TicketStatusUpdateResponse,
 } from "../types";
@@ -18,6 +19,7 @@ export const queueMutationKeys = {
   appendToQueue: ["queue", "ticket", "append"],
   skipOneAhead: ["queue", "ticket", "skip-one"],
   inviteNext: ["queue", "invite", "next"],
+  createManualTicket: ["queue", "ticket", "manual"],
   inviteById: ["queue", "ticket", "invite"],
   removeTicket: ["queue", "ticket", "remove"],
 };
@@ -88,6 +90,15 @@ export const queueMutationOptions = {
       ...rest,
     })
   },
+
+  createManualTicket: (
+    options?: MutationOptionsType<ManualTicketResponse, number>,
+  ) =>
+    mutationOptions({
+      mutationKey: queueMutationKeys.createManualTicket,
+      mutationFn: async (queueId: number) => queuesApi.createManualTicket(queueId),
+      ...options,
+    }),
 
   inviteById: (
     options?: MutationOptionsType<TicketStatusUpdateResponse, InviteByIdVariables>,

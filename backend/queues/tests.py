@@ -360,6 +360,39 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.data['ticket']['operator'], self.operator.id)
 		self.assertEqual(response.data['queue_snapshot']['queue_id'], queue.id)
 
+	def test_operator_can_create_multiple_manual_tickets(self):
+		queue = Queue.objects.create(
+			branch=self.branch,
+			name='Бумажные талоны',
+			clients_limit=1,
+		)
+		self.assign_operator(queue)
+
+		first_response = self.client.post(
+			f'/api/v1/queues/{queue.id}/manual-ticket/',
+			{},
+			**self.operator_headers(),
+			format='json',
+		)
+		second_response = self.client.post(
+			f'/api/v1/queues/{queue.id}/manual-ticket/',
+			{},
+			**self.operator_headers(),
+			format='json',
+		)
+
+		self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+		self.assertNotEqual(
+			first_response.data['ticket']['client'],
+			second_response.data['ticket']['client'],
+		)
+		self.assertEqual(second_response.data['queue_snapshot']['waiting_count'], 2)
+		self.assertEqual(
+			Ticket.objects.filter(queue=queue, status=QueueStatus.WAITING).count(),
+			2,
+		)
+
 	def test_status_update_allows_client_leave_without_operator_token(self):
 		queue = Queue.objects.create(branch=self.branch, name='Окно 1')
 		ticket = Ticket.objects.create(

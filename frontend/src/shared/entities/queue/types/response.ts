@@ -62,6 +62,11 @@ export interface InviteNextResponse {
   queue_snapshot: QueueSnapshotResponse;
 }
 
+export interface ManualTicketResponse {
+  ticket: TicketItemResponse;
+  queue_snapshot: QueueSnapshotResponse;
+}
+
 export interface QueueDeleteTicketsResponse {
   queue_id: number;
   deleted_count: number;
