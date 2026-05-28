@@ -23,9 +23,13 @@ template_xelatex/_minted/
 !/.github/**
 !/deploy/
 !/deploy/**
+!/frontend/
 !/frontend/**
 !/frontend/Dockerfile
 !/frontend/nginx.conf
 !/frontend/.dockerignore
 !/frontend/src/
 !/frontend/src/**
+!/backend/
+!/backend/**
+!/текущий_функционал.md
