@@ -1,5 +1,6 @@
 import { Form, Input, InputNumber, Modal, Select } from "antd";
 import { useTranslation } from "react-i18next";
+import { QUEUE_NOTIFICATION_CHANNEL_OPTIONS } from "@shared/entities/queue/notificationOptions";
 
 import { useAdminDashboardContext } from "../../context/useAdminDashboardContext";
 
@@ -75,12 +76,7 @@ export const QueueModal = () => {
         >
           <Select
             mode="multiple"
-            options={[
-              { label: "SMS", value: "sms" },
-              { label: "VK", value: "vk" },
-              { label: "Bot", value: "bot" },
-              { label: "Web Push", value: "webpush" },
-            ]}
+            options={[...QUEUE_NOTIFICATION_CHANNEL_OPTIONS]}
           />
         </Form.Item>
         <Form.Item name="poster_title" label="Заголовок плаката">

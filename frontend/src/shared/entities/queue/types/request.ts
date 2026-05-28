@@ -1,3 +1,5 @@
+import type { QueueNotificationOptions } from "../notificationOptions";
+
 export interface QueueListRequest {
   branch?: number;
 }
@@ -7,7 +9,7 @@ export interface CreateQueueRequest {
   branch?: number | null;
   name: string;
   language?: "ru" | "en";
-  notification_options?: Record<string, unknown> | null;
+  notification_options?: QueueNotificationOptions | null;
   clients_limit?: number | null;
   called_ticket_timeout_seconds?: number | null;
   poster_title?: string | null;

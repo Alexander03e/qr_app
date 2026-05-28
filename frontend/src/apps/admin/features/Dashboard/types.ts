@@ -1,7 +1,4 @@
-import type {
-  FeedbackStatus,
-  FeedbackType,
-} from "@shared/entities/admin/types";
+import type { QueueNotificationOptions } from "@shared/entities/queue/notificationOptions";
 
 export interface OperatorFormValues {
   fullname: string;
@@ -19,7 +16,7 @@ export interface QueueFormValues {
   language: "ru" | "en";
   clients_limit?: number;
   called_ticket_timeout_seconds?: number;
-  notification_options?: { channels: string[] };
+  notification_options?: QueueNotificationOptions;
   poster_title?: string;
   poster_subtitle?: string;
   queue_url?: string;
@@ -30,17 +27,6 @@ export interface BranchFormValues {
   address: string;
   is_active: boolean;
   work_schedule_text?: string;
-}
-
-export interface FeedbackFormValues {
-  branch?: number;
-  queue?: number;
-  ticket?: number;
-  type: FeedbackType;
-  title: string;
-  message: string;
-  rating?: number;
-  status: FeedbackStatus;
 }
 
 export interface CompanyFormValues {

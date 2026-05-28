@@ -10,6 +10,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from clients.models import Client
 from clients.services import get_client_by_id, get_or_create_client_by_identity
 from queues.models import Queue, QueueStatus, Ticket
+from queues.notification_options import normalize_queue_notification_options
 from users.models import User
 
 
@@ -185,6 +186,7 @@ def resolve_client_from_identifier(client_id: str | None):
 def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
     expire_called_tickets(queue)
     timeout_seconds = get_called_ticket_timeout_seconds(queue)
+    notification_options = normalize_queue_notification_options(queue.notification_options)
 
     waiting_qs = queue.tickets.filter(status=QueueStatus.WAITING).order_by('enqueued_at', 'id')
     waiting_tickets = list(waiting_qs)
@@ -217,6 +219,7 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
                 'queue_id': queue.id,
                 'queue_name': queue.name,
                 'queue_language': queue.language,
+                'notification_options': notification_options,
                 'waiting_count': waiting_count,
                 'current_ticket': current_ticket,
                 'waiting_tickets': waiting_tickets,
@@ -272,6 +275,7 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
         'queue_id': queue.id,
         'queue_name': queue.name,
         'queue_language': queue.language,
+        'notification_options': notification_options,
         'waiting_count': waiting_count,
         'current_ticket': current_ticket,
         'waiting_tickets': waiting_tickets,

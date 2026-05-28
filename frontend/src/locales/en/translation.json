@@ -31,12 +31,17 @@
       "enabled": "enabled",
       "pushTitle": "Browser push",
       "enablePush": "Enable push",
+      "disablePush": "Disable push",
       "pushEnabled": "Push notifications enabled",
       "pushEnabledShort": "Push enabled",
+      "pushDisabled": "Push notifications disabled",
+      "pushDisableFailed": "Failed to disable push",
       "pushUnsupported": "This browser does not support push notifications",
       "pushNotConfigured": "Push keys are not configured on the server",
       "pushDenied": "Notification permission was not granted",
       "pushFailed": "Failed to enable push",
+      "secureContextRequired": "Open the page over HTTPS to enable web-push notifications",
+      "iosPwaRequired": "On iPhone and iPad, web-push works only for the app added to the Home Screen",
       "browserNotificationsEnabled": "Browser notifications enabled",
       "localTicketCalledTitle": "Your turn",
       "localTicketCalledBody": "Ticket {{ticket}} was called in queue \"{{queue}}\".",
@@ -50,7 +55,8 @@
       "vkOAuthPopupBlocked": "The browser blocked the VK authorization window",
       "vkOAuthClosed": "VK authorization window was closed",
       "vkOAuthTimeout": "VK authorization timed out",
-      "statusUnavailable": "Subscription status is temporarily unavailable"
+      "statusUnavailable": "Subscription status is temporarily unavailable",
+      "channelsUnavailable": "Notifications are disabled for this queue"
     },
     "guestPage": {
       "enterQueue": "Join queue",

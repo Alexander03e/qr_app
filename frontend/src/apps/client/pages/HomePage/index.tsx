@@ -4,6 +4,8 @@ import { Label } from "@shared/components/Label";
 import { Button, Flex, Typography } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueueStore } from "@apps/client/store";
+import { normalizeQueueNotificationChannels } from "@shared/entities/queue/notificationOptions";
 import { NotificationSettingsModal } from "./components/NotificationSettingsModal";
 import styles from "./HomePage.module.scss";
 import { useBrowserTicketNotification } from "./hooks/useBrowserTicketNotification";
@@ -12,6 +14,13 @@ import { useClientQueueController } from "./hooks/useClientQueueController";
 export const HomePage = () => {
   const { t } = useTranslation();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const { queueData } = useQueueStore();
+  const enabledNotificationChannels = normalizeQueueNotificationChannels(
+    queueData?.notification_options,
+  );
+  const hasNotificationChannels = enabledNotificationChannels.length > 0;
+  const isWebPushEnabledForQueue =
+    enabledNotificationChannels.includes("webpush");
   const {
     calledTimeLeftLabel,
     clientId,
@@ -31,7 +40,12 @@ export const HomePage = () => {
     ticket,
   } = useClientQueueController();
 
-  useBrowserTicketNotification({ queueId, queueName, ticket });
+  useBrowserTicketNotification({
+    enabled: isWebPushEnabledForQueue,
+    queueId,
+    queueName,
+    ticket,
+  });
 
   return (
     <Flex gap={16} vertical>
@@ -61,12 +75,14 @@ export const HomePage = () => {
         </Circle>
       </div>
       <div className={styles.bottom}>
-        <Button
-          icon={<BellOutlined />}
-          onClick={() => setIsNotificationsOpen(true)}
-        >
-          {t("client.notifications.openButton")}
-        </Button>
+        {hasNotificationChannels ? (
+          <Button
+            icon={<BellOutlined />}
+            onClick={() => setIsNotificationsOpen(true)}
+          >
+            {t("client.notifications.openButton")}
+          </Button>
+        ) : null}
         <Button
           type="primary"
           onClick={handleSkipOneAhead}

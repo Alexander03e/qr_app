@@ -36,7 +36,11 @@ class AdminFeedbackApiTests(APITestCase):
 			is_active=True,
 			work_schedule_json={},
 		)
-		self.queue = Queue.objects.create(branch=self.branch, name='Касса 1')
+		self.queue = Queue.objects.create(
+			branch=self.branch,
+			name='Касса 1',
+			notification_options={'channels': ['vk', 'webpush']},
+		)
 		self.client_obj = Client.objects.create(name='Client', branch_id=str(self.branch.id))
 		self.ticket = Ticket.objects.create(
 			queue=self.queue,
@@ -83,7 +87,37 @@ class AdminFeedbackApiTests(APITestCase):
 		self.assertEqual(feedback_item.rating, 2)
 		self.assertEqual(feedback_item.status, FeedbackStatus.NEW)
 
-	def test_admin_can_create_and_resolve_feedback(self):
+	def test_admin_can_view_company_feedback(self):
+		feedback_item = FeedbackItem.objects.create(
+			company=self.company,
+			branch=self.branch,
+			queue=self.queue,
+			type=FeedbackType.FEEDBACK,
+			title='Спасибо',
+			message='Все быстро',
+			status=FeedbackStatus.NEW,
+		)
+
+		response = self.client.get(
+			'/api/v1/admin/feedback/',
+			**self.admin_headers(),
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data[0]['id'], feedback_item.id)
+		self.assertEqual(response.data[0]['message'], 'Все быстро')
+
+	def test_admin_cannot_create_or_update_feedback(self):
+		feedback_item = FeedbackItem.objects.create(
+			company=self.company,
+			branch=self.branch,
+			queue=self.queue,
+			type=FeedbackType.FEEDBACK,
+			title='Спасибо',
+			message='Все быстро',
+			status=FeedbackStatus.NEW,
+		)
+
 		create_response = self.client.post(
 			'/api/v1/admin/feedback/',
 			{
@@ -98,19 +132,18 @@ class AdminFeedbackApiTests(APITestCase):
 			format='json',
 		)
 
-		self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(create_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 		update_response = self.client.patch(
-			f"/api/v1/admin/feedback/{create_response.data['id']}/",
+			f'/api/v1/admin/feedback/{feedback_item.id}/',
 			{'status': FeedbackStatus.RESOLVED},
 			**self.admin_headers(),
 			format='json',
 		)
 
-		self.assertEqual(update_response.status_code, status.HTTP_200_OK)
-		self.assertEqual(update_response.data['status'], FeedbackStatus.RESOLVED)
-		self.assertEqual(update_response.data['resolved_by_user'], self.admin.id)
-		self.assertIsNotNone(update_response.data['resolved_at'])
+		self.assertEqual(update_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+		feedback_item.refresh_from_db()
+		self.assertEqual(feedback_item.status, FeedbackStatus.NEW)
 
 	def test_client_can_subscribe_to_web_push(self):
 		response = self.client.post(
@@ -136,6 +169,28 @@ class AdminFeedbackApiTests(APITestCase):
 		self.assertEqual(subscription.queue_id, self.queue.id)
 		self.assertTrue(subscription.is_active)
 
+	def test_client_cannot_subscribe_to_disabled_web_push(self):
+		self.queue.notification_options = {'channels': ['vk']}
+		self.queue.save(update_fields=['notification_options'])
+
+		response = self.client.post(
+			'/api/v1/notifications/web-push/subscribe/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+				'subscription': {
+					'endpoint': 'https://push.example.test/subscription/disabled',
+					'keys': {
+						'p256dh': 'p256dh-test-key',
+						'auth': 'auth-test-key',
+					},
+				},
+			},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 	def test_client_can_subscribe_to_vk_notifications(self):
 		response = self.client.post(
 			'/api/v1/notifications/vk/subscribe/',
@@ -160,6 +215,32 @@ class AdminFeedbackApiTests(APITestCase):
 				is_active=True,
 			).exists()
 		)
+
+	def test_client_can_unsubscribe_from_web_push(self):
+		subscription = ClientNotificationSubscription.objects.create(
+			queue=self.queue,
+			client=self.client_obj,
+			channel=NotificationChannelType.WEB_PUSH,
+			endpoint='https://push.example.test/subscription/2',
+			p256dh_key='p256dh-test-key',
+			auth_key='auth-test-key',
+			is_active=True,
+		)
+
+		response = self.client.post(
+			'/api/v1/notifications/web-push/unsubscribe/',
+			{
+				'queue_id': self.queue.id,
+				'ticket_id': self.ticket.id,
+				'endpoint': subscription.endpoint,
+			},
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['disabled_count'], 1)
+		subscription.refresh_from_db()
+		self.assertFalse(subscription.is_active)
 
 	def test_vk_oauth_start_reports_missing_config(self):
 		response = self.client.post(

@@ -3,7 +3,6 @@ import type {
   AdminBranch,
   AdminCompany,
   AdminCreateBranchPayload,
-  AdminCreateFeedbackPayload,
   AdminCreateOperatorPayload,
   AdminCreateQueuePayload,
   AdminFeedbackItem,
@@ -14,7 +13,6 @@ import type {
   AdminQueueSnapshot,
   AdminUpdateBranchPayload,
   AdminUpdateCompanyPayload,
-  AdminUpdateFeedbackPayload,
   AdminUpdateOperatorPayload,
   AdminUpdateQueuePayload,
   AdminUpdateSettingsPayload,
@@ -113,17 +111,6 @@ class AdminApi {
 
   async getFeedback(): Promise<AdminFeedbackItem[]> {
     return (await $api.get("/admin/feedback/")).data;
-  }
-
-  async createFeedback(payload: AdminCreateFeedbackPayload): Promise<AdminFeedbackItem> {
-    return (await $api.post("/admin/feedback/", payload)).data;
-  }
-
-  async updateFeedback(
-    feedbackId: number,
-    payload: AdminUpdateFeedbackPayload,
-  ): Promise<AdminFeedbackItem> {
-    return (await $api.patch(`/admin/feedback/${feedbackId}/`, payload)).data;
   }
 
   async deleteFeedback(feedbackId: number): Promise<void> {

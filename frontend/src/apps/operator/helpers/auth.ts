@@ -1,5 +1,6 @@
 import { $api } from "@shared/api/axios";
 import { OPERATOR_AUTH_TOKEN_STORAGE_KEY } from "@shared/consts";
+import type { QueueNotificationOptions } from "@shared/entities/queue/notificationOptions";
 
 interface OperatorProfile {
   id: number;
@@ -21,7 +22,7 @@ export interface OperatorQueue {
   branch: number | null;
   name: string;
   language: "ru" | "en";
-  notification_options: { channels?: string[] } | null;
+  notification_options: QueueNotificationOptions | null;
   clients_limit: number | null;
   called_ticket_timeout_seconds: number | null;
   poster_title: string | null;
@@ -75,7 +76,7 @@ export const operatorAuth = {
         | "poster_subtitle"
       >
     > & {
-      notification_options?: { channels: string[] };
+      notification_options?: QueueNotificationOptions;
     }
   ): Promise<OperatorQueue> {
     return (await $api.patch(`/operator/queues/${queueId}/settings/`, payload))

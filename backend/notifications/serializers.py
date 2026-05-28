@@ -71,6 +71,17 @@ class PublicWebPushSubscribeSerializer(serializers.Serializer):
     subscription = WebPushBrowserSubscriptionSerializer()
 
 
+class PublicWebPushUnsubscribeSerializer(serializers.Serializer):
+    queue_id = serializers.IntegerField()
+    client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    ticket_id = serializers.IntegerField(required=False, allow_null=True)
+    endpoint = serializers.URLField(max_length=1000, required=False, allow_blank=True, allow_null=True)
+
+
+class WebPushUnsubscribeResponseSerializer(serializers.Serializer):
+    disabled_count = serializers.IntegerField()
+
+
 class PublicVkSubscribeSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
     client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)

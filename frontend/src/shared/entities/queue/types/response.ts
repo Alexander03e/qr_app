@@ -1,4 +1,5 @@
 import type { TicketStatus } from "./enum";
+import type { QueueNotificationOptions } from "../notificationOptions";
 
 export interface QueueItemResponse {
   id: number;
@@ -6,7 +7,7 @@ export interface QueueItemResponse {
   branch: number | null;
   name: string;
   language: "ru" | "en";
-  notification_options: Record<string, unknown> | null;
+  notification_options: QueueNotificationOptions | null;
   clients_limit: number | null;
   called_ticket_timeout_seconds: number | null;
   poster_title: string | null;
@@ -43,6 +44,7 @@ export interface QueueSnapshotResponse {
   queue_id: number;
   queue_name: string;
   queue_language: "ru" | "en";
+  notification_options: QueueNotificationOptions;
   waiting_count: number;
   current_ticket: QueueBoardTicketResponse | null;
   waiting_tickets: QueueBoardTicketResponse[];

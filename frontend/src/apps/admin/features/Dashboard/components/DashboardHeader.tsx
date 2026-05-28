@@ -1,4 +1,4 @@
-import { Button, Layout, Select, Space, Typography } from "antd";
+import { Button, Flex, Layout, Select, Typography } from "antd";
 import { useAdminDashboardContext } from "../context/useAdminDashboardContext";
 
 export const DashboardHeader = () => {
@@ -6,8 +6,17 @@ export const DashboardHeader = () => {
 
   return (
     <Layout.Header className="admin-dashboard__header">
-      <Space className="admin-dashboard__header-profile" size={[8, 4]} wrap>
-        <Typography.Text strong ellipsis className="admin-dashboard__header-text">
+      <Flex
+        className="admin-dashboard__header-profile"
+        align="center"
+        gap={12}
+        wrap
+      >
+        <Typography.Text
+          strong
+          ellipsis
+          className="admin-dashboard__header-text"
+        >
           {dashboard.currentAdmin.fullname}
         </Typography.Text>
         <Typography.Text
@@ -27,7 +36,7 @@ export const DashboardHeader = () => {
             { label: "EN", value: "en" },
           ]}
         />
-      </Space>
+      </Flex>
       <Button onClick={actions.onLogout}>
         {dashboard.t("admin.common.logout")}
       </Button>

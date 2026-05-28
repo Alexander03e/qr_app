@@ -1,3 +1,5 @@
+import type { QueueNotificationOptions } from "@shared/entities/queue/notificationOptions";
+
 export interface AdminCompany {
   id: number;
   name: string;
@@ -38,7 +40,7 @@ export interface AdminQueue {
   branch: number | null;
   name: string;
   language: "ru" | "en";
-  notification_options: Record<string, unknown>;
+  notification_options: QueueNotificationOptions | null;
   clients_limit: number | null;
   called_ticket_timeout_seconds: number | null;
   poster_title: string | null;
@@ -293,7 +295,7 @@ export interface AdminCreateQueuePayload {
   branch: number;
   name: string;
   language?: "ru" | "en";
-  notification_options?: { channels: string[] };
+  notification_options?: QueueNotificationOptions;
   clients_limit?: number;
   called_ticket_timeout_seconds?: number | null;
   poster_title?: string | null;
@@ -305,34 +307,12 @@ export interface AdminUpdateQueuePayload {
   branch?: number;
   name?: string;
   language?: "ru" | "en";
-  notification_options?: { channels: string[] };
+  notification_options?: QueueNotificationOptions;
   clients_limit?: number | null;
   called_ticket_timeout_seconds?: number | null;
   poster_title?: string | null;
   poster_subtitle?: string | null;
   queue_url?: string | null;
-}
-
-export interface AdminCreateFeedbackPayload {
-  branch?: number | null;
-  queue?: number | null;
-  ticket?: number | null;
-  type: FeedbackType;
-  title: string;
-  message: string;
-  rating?: number | null;
-  status?: FeedbackStatus;
-}
-
-export interface AdminUpdateFeedbackPayload {
-  branch?: number | null;
-  queue?: number | null;
-  ticket?: number | null;
-  type?: FeedbackType;
-  title?: string;
-  message?: string;
-  rating?: number | null;
-  status?: FeedbackStatus;
 }
 
 export interface AdminUpdateCompanyPayload {

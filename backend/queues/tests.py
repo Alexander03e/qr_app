@@ -76,6 +76,22 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(response.data['name'], 'Касса 1')
 
+	def test_create_queue_rejects_unsupported_notification_channels(self):
+		payload = {
+			'branch': self.branch.id,
+			'name': 'Касса 1',
+			'notification_options': {'channels': ['vk', 'bot']},
+		}
+
+		response = self.client.post(
+			'/api/v1/admin/queues/',
+			payload,
+			**self.admin_headers(),
+			format='json',
+		)
+
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 	def test_create_ticket_generates_display_number(self):
 		queue = Queue.objects.create(branch=self.branch, name='Тестовая очередь')
 		payload = {
@@ -207,7 +223,11 @@ class QueueTicketApiTests(APITestCase):
 		self.assertNotEqual(first_response.data['client'], second_response.data['client'])
 
 	def test_queue_snapshot_endpoint_returns_waiting_and_current(self):
-		queue = Queue.objects.create(branch=self.branch, name='Табло')
+		queue = Queue.objects.create(
+			branch=self.branch,
+			name='Табло',
+			notification_options={'channels': ['vk', 'webpush', 'bot']},
+		)
 		t1 = Ticket.objects.create(
 			queue=queue,
 			client=self.client_obj,
@@ -231,6 +251,7 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 		self.assertEqual(response.data['queue_id'], queue.id)
 		self.assertEqual(response.data['queue_name'], 'Табло')
+		self.assertEqual(response.data['notification_options'], {'channels': ['vk', 'webpush']})
 		self.assertEqual(response.data['waiting_count'], 1)
 		self.assertEqual(response.data['current_ticket']['id'], t2.id)
 		self.assertEqual(response.data['waiting_tickets'][0]['id'], t1.id)

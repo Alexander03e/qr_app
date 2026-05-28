@@ -27,6 +27,11 @@ from notifications.models import (
     WebhookSubscription,
 )
 from queues.models import Queue, QueueStatus, Ticket
+from queues.notification_options import (
+    VK_NOTIFICATION_CHANNEL,
+    WEB_PUSH_NOTIFICATION_CHANNEL,
+    is_queue_notification_channel_enabled,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +99,13 @@ def get_queue_for_notification(queue_id: int) -> Queue:
         raise NotFound('Очередь не найдена.') from exc
 
 
+def validate_queue_notification_channel(queue: Queue, channel: str) -> None:
+    if is_queue_notification_channel_enabled(queue, channel):
+        return
+
+    raise ValidationError({'channel': ['Канал уведомлений отключен в настройках очереди.']})
+
+
 def resolve_notification_client(
     *,
     queue_id: int,
@@ -130,6 +142,7 @@ def subscribe_web_push(
     user_agent: str | None = None,
 ) -> ClientNotificationSubscription:
     queue = get_queue_for_notification(queue_id=queue_id)
+    validate_queue_notification_channel(queue, WEB_PUSH_NOTIFICATION_CHANNEL)
     client = resolve_notification_client(
         queue_id=queue.id,
         client_id=client_id,
@@ -158,6 +171,31 @@ def subscribe_web_push(
     return notification_subscription
 
 
+def unsubscribe_web_push(
+    *,
+    queue_id: int,
+    client_id: str | None,
+    ticket_id: int | None,
+    endpoint: str | None = None,
+) -> int:
+    queue = get_queue_for_notification(queue_id=queue_id)
+    client = resolve_notification_client(
+        queue_id=queue.id,
+        client_id=client_id,
+        ticket_id=ticket_id,
+    )
+    subscriptions = ClientNotificationSubscription.objects.filter(
+        queue=queue,
+        client=client,
+        channel=NotificationChannelType.WEB_PUSH,
+        is_active=True,
+    )
+    if endpoint:
+        subscriptions = subscriptions.filter(endpoint=endpoint)
+
+    return subscriptions.update(is_active=False)
+
+
 def subscribe_vk(
     *,
     queue_id: int,
@@ -166,6 +204,7 @@ def subscribe_vk(
     vk_id: str,
 ) -> ClientNotificationSubscription:
     queue = get_queue_for_notification(queue_id=queue_id)
+    validate_queue_notification_channel(queue, VK_NOTIFICATION_CHANNEL)
     client = resolve_notification_client(
         queue_id=queue.id,
         client_id=client_id,
@@ -312,17 +351,35 @@ def get_client_notification_status(
         client_id=client_id,
         ticket_id=ticket_id,
     )
+    enabled_subscription_channels = []
+    web_push_channel_enabled = is_queue_notification_channel_enabled(
+        queue,
+        WEB_PUSH_NOTIFICATION_CHANNEL,
+    )
+    vk_channel_enabled = is_queue_notification_channel_enabled(queue, VK_NOTIFICATION_CHANNEL)
+    if web_push_channel_enabled:
+        enabled_subscription_channels.append(NotificationChannelType.WEB_PUSH)
+    if vk_channel_enabled:
+        enabled_subscription_channels.append(NotificationChannelType.VK)
+
     subscriptions = list(
         ClientNotificationSubscription.objects.filter(
             queue=queue,
             client=client,
             is_active=True,
+            channel__in=enabled_subscription_channels,
         ).order_by('channel', '-updated_at')
     )
 
     return {
-        'web_push_enabled': any(item.channel == NotificationChannelType.WEB_PUSH for item in subscriptions),
-        'vk_enabled': any(item.channel == NotificationChannelType.VK for item in subscriptions),
+        'web_push_enabled': (
+            web_push_channel_enabled
+            and any(item.channel == NotificationChannelType.WEB_PUSH for item in subscriptions)
+        ),
+        'vk_enabled': (
+            vk_channel_enabled
+            and any(item.channel == NotificationChannelType.VK for item in subscriptions)
+        ),
         'subscriptions': subscriptions,
     }
 
@@ -602,6 +659,11 @@ def get_ticket_for_notification(ticket_id: int) -> Ticket | None:
 
 
 def notify_client_ticket_called(ticket: Ticket, payload: dict) -> None:
+    web_push_enabled = is_queue_notification_channel_enabled(
+        ticket.queue,
+        WEB_PUSH_NOTIFICATION_CHANNEL,
+    )
+    vk_enabled = is_queue_notification_channel_enabled(ticket.queue, VK_NOTIFICATION_CHANNEL)
     subscriptions = ClientNotificationSubscription.objects.filter(
         queue_id=ticket.queue_id,
         client_id=ticket.client_id,
@@ -609,9 +671,9 @@ def notify_client_ticket_called(ticket: Ticket, payload: dict) -> None:
     )
 
     for subscription in subscriptions:
-        if subscription.channel == NotificationChannelType.WEB_PUSH:
+        if subscription.channel == NotificationChannelType.WEB_PUSH and web_push_enabled:
             send_web_push_notification(subscription=subscription, ticket=ticket, payload=payload)
-        elif subscription.channel == NotificationChannelType.VK:
+        elif subscription.channel == NotificationChannelType.VK and vk_enabled:
             send_vk_notification(subscription=subscription, ticket=ticket, payload=payload)
 
 

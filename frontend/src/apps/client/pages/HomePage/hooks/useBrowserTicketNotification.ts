@@ -20,6 +20,17 @@ export const enableLocalBrowserNotifications = (
   }
 };
 
+export const disableLocalBrowserNotifications = (
+  queueId: number,
+  ticketId: number,
+) => {
+  try {
+    window.localStorage.removeItem(getBrowserNotificationKey(queueId, ticketId));
+  } catch {
+    return;
+  }
+};
+
 export const hasLocalBrowserNotifications = (
   queueId: number,
   ticketId?: number | null,
@@ -36,12 +47,14 @@ export const hasLocalBrowserNotifications = (
 };
 
 interface UseBrowserTicketNotificationParams {
+  enabled?: boolean;
   queueId: number | null;
   queueName: string | null;
   ticket: TicketItemResponse | null;
 }
 
 export const useBrowserTicketNotification = ({
+  enabled = true,
   queueId,
   queueName,
   ticket,
@@ -51,6 +64,7 @@ export const useBrowserTicketNotification = ({
 
   useEffect(() => {
     if (
+      !enabled ||
       !queueId ||
       !ticket ||
       ticket.status !== TICKET_STATUS.CALLED ||
@@ -82,5 +96,5 @@ export const useBrowserTicketNotification = ({
       window.focus();
       notification.close();
     };
-  }, [queueId, queueName, t, ticket]);
+  }, [enabled, queueId, queueName, t, ticket]);
 };

@@ -33,12 +33,17 @@
       "enabled": "включено",
       "pushTitle": "Push в браузере",
       "enablePush": "Включить push",
+      "disablePush": "Отключить push",
       "pushEnabled": "Push-уведомления включены",
       "pushEnabledShort": "Push включен",
+      "pushDisabled": "Push-уведомления отключены",
+      "pushDisableFailed": "Не удалось отключить push",
       "pushUnsupported": "Браузер не поддерживает push-уведомления",
       "pushNotConfigured": "Push-ключи не настроены на сервере",
       "pushDenied": "Разрешение на уведомления не выдано",
       "pushFailed": "Не удалось включить push",
+      "secureContextRequired": "Откройте страницу по HTTPS, чтобы включить web-push уведомления",
+      "iosPwaRequired": "На iPhone и iPad web-push работает только у приложения, добавленного на экран «Домой»",
       "browserNotificationsEnabled": "Уведомления в браузере включены",
       "localTicketCalledTitle": "Ваша очередь",
       "localTicketCalledBody": "Талон {{ticket}} вызван в очереди «{{queue}}».",
@@ -52,7 +57,8 @@
       "vkOAuthPopupBlocked": "Браузер заблокировал окно авторизации VK",
       "vkOAuthClosed": "Окно авторизации VK закрыто",
       "vkOAuthTimeout": "Время авторизации VK истекло",
-      "statusUnavailable": "Статус подписок временно недоступен"
+      "statusUnavailable": "Статус подписок временно недоступен",
+      "channelsUnavailable": "В этой очереди уведомления отключены"
     },
     "leftPage": {
       "title": "Вы покинули очередь",

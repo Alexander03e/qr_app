@@ -4,6 +4,7 @@ import { normalizeError } from "@shared/helper/normalizeError";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  disableLocalBrowserNotifications,
   enableLocalBrowserNotifications,
   hasLocalBrowserNotifications,
   isBrowserNotificationsSupported,
@@ -51,6 +52,28 @@ const serializePushSubscription = (
   return payload;
 };
 
+const isLocalhost = () =>
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+const isSecurePushContext = () => window.isSecureContext || isLocalhost();
+
+const isIosDevice = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const isStandaloneApp = () =>
+  window.matchMedia("(display-mode: standalone)").matches ||
+  Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+
+const requestNotificationPermission = async (): Promise<NotificationPermission> => {
+  if (Notification.permission !== "default") {
+    return Notification.permission;
+  }
+
+  return Notification.requestPermission();
+};
+
 export const useClientNotifications = ({
   queueId,
   clientId,
@@ -71,11 +94,31 @@ export const useClientNotifications = ({
   const isWebPushSupported = useMemo(
     () =>
       typeof window !== "undefined" &&
+      isSecurePushContext() &&
       "serviceWorker" in navigator &&
       "PushManager" in window &&
       isBrowserNotificationsSupported(),
     [],
   );
+  const pushSupportMessage = useMemo(() => {
+    if (!isPushSupported) {
+      return t("client.notifications.pushUnsupported");
+    }
+
+    if (!isSecurePushContext()) {
+      return t("client.notifications.secureContextRequired");
+    }
+
+    if (isIosDevice() && !isStandaloneApp()) {
+      return t("client.notifications.iosPwaRequired");
+    }
+
+    if (!isWebPushSupported) {
+      return t("client.notifications.pushUnsupported");
+    }
+
+    return null;
+  }, [isPushSupported, isWebPushSupported, t]);
 
   const loadStatus = useCallback(async () => {
     if (!queueId || (!clientId && !ticketId)) {
@@ -108,10 +151,10 @@ export const useClientNotifications = ({
       return;
     }
 
-    if (!isPushSupported) {
+    if (pushSupportMessage) {
       setFeedback({
         type: "error",
-        message: t("client.notifications.pushUnsupported"),
+        message: pushSupportMessage,
       });
       return;
     }
@@ -119,15 +162,15 @@ export const useClientNotifications = ({
     setIsPushLoading(true);
     setFeedback(null);
     try {
-      const publicKey = await notificationsApi.getWebPushPublicKey();
-      const permission = await Notification.requestPermission();
+      const permission = await requestNotificationPermission();
       if (permission !== "granted") {
         throw new Error(t("client.notifications.pushDenied"));
       }
 
+      const publicKey = await notificationsApi.getWebPushPublicKey();
       if (publicKey.configured && publicKey.public_key && isWebPushSupported) {
-        const registration =
-          await navigator.serviceWorker.register("/service-worker.js");
+        await navigator.serviceWorker.register("/service-worker.js");
+        const registration = await navigator.serviceWorker.ready;
         const existingSubscription =
           await registration.pushManager.getSubscription();
         const pushSubscription =
@@ -168,7 +211,54 @@ export const useClientNotifications = ({
     } finally {
       setIsPushLoading(false);
     }
-  }, [clientId, isPushLoading, isPushSupported, isWebPushSupported, queueId, t, ticketId]);
+  }, [clientId, isPushLoading, isWebPushSupported, pushSupportMessage, queueId, t, ticketId]);
+
+  const disableWebPush = useCallback(async () => {
+    if (!queueId || !ticketId || isPushLoading) {
+      return;
+    }
+
+    setIsPushLoading(true);
+    setFeedback(null);
+    try {
+      let endpoint: string | null = null;
+      if ("serviceWorker" in navigator && "PushManager" in window) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const pushSubscription =
+          await registration?.pushManager.getSubscription();
+        if (pushSubscription) {
+          endpoint = pushSubscription.endpoint;
+          await pushSubscription.unsubscribe();
+        }
+      }
+
+      disableLocalBrowserNotifications(queueId, ticketId);
+      await notificationsApi.unsubscribeWebPush({
+        queue_id: queueId,
+        client_id: clientId,
+        ticket_id: ticketId,
+        endpoint,
+      });
+
+      setIsPushEnabled(false);
+      setFeedback({
+        type: "success",
+        message: t("client.notifications.pushDisabled"),
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : normalizeError(error, {
+                defaultMessage: t("client.notifications.pushDisableFailed"),
+              }),
+      });
+    } finally {
+      setIsPushLoading(false);
+    }
+  }, [clientId, isPushLoading, queueId, t, ticketId]);
 
   const connectVk = useCallback(
     async () => {
@@ -262,11 +352,13 @@ export const useClientNotifications = ({
 
   return {
     connectVk,
+    disableWebPush,
     enableWebPush,
     feedback,
     isPushEnabled,
     isPushLoading,
     isPushSupported,
+    pushSupportMessage,
     isStatusLoading,
     isVkEnabled,
     isVkLoading,

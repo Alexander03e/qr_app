@@ -1,10 +1,10 @@
 import type {
   AdminBranch,
-  AdminFeedbackItem,
   AdminOperator,
   AdminQueue,
 } from "@shared/entities/admin/types";
 import { adminAuth } from "@apps/admin/helpers/auth";
+import { makeQueueNotificationOptions } from "@shared/entities/queue/notificationOptions";
 import { makeRequest } from "@shared/helper/handler";
 import { useCallback } from "react";
 import type { NavigateFunction } from "react-router-dom";
@@ -14,7 +14,6 @@ import type {
   AdminSettingsFormValues,
   BranchFormValues,
   CompanyFormValues,
-  FeedbackFormValues,
   OperatorFormValues,
   QueueFormValues,
 } from "../types";
@@ -118,41 +117,11 @@ export const useAdminDashboardActions = ({
         clients_limit: queue.clients_limit ?? undefined,
         called_ticket_timeout_seconds: queue.called_ticket_timeout_seconds ?? undefined,
         notification_options: {
-          channels: Array.isArray(queue.notification_options?.channels)
-            ? (queue.notification_options.channels as string[])
-            : [],
+          channels: makeQueueNotificationOptions(queue.notification_options).channels,
         },
         poster_title: queue.poster_title ?? undefined,
         poster_subtitle: queue.poster_subtitle ?? undefined,
         queue_url: queue.queue_url ?? undefined,
-      });
-    },
-    [dashboard],
-  );
-
-  const openCreateFeedback = useCallback(() => {
-    dashboard.setEditingFeedback(null);
-    dashboard.feedbackForm.resetFields();
-    dashboard.feedbackForm.setFieldsValue({
-      type: "FEEDBACK",
-      status: "NEW",
-    });
-    dashboard.setFeedbackModalOpen(true);
-  }, [dashboard]);
-
-  const openEditFeedback = useCallback(
-    (feedback: AdminFeedbackItem) => {
-      dashboard.setEditingFeedback(feedback);
-      dashboard.setFeedbackModalOpen(true);
-      dashboard.feedbackForm.setFieldsValue({
-        type: feedback.type,
-        title: feedback.title,
-        message: feedback.message,
-        rating: feedback.rating ?? undefined,
-        status: feedback.status,
-        branch: feedback.branch ?? undefined,
-        queue: feedback.queue ?? undefined,
-        ticket: feedback.ticket ?? undefined,
       });
     },
     [dashboard],
@@ -260,9 +229,7 @@ export const useAdminDashboardActions = ({
               clients_limit: values.clients_limit ?? null,
               called_ticket_timeout_seconds:
                 values.called_ticket_timeout_seconds ?? null,
-              notification_options: values.notification_options ?? {
-                channels: [],
-              },
+              notification_options: makeQueueNotificationOptions(values.notification_options),
               poster_title: values.poster_title ?? null,
               poster_subtitle: values.poster_subtitle ?? null,
               queue_url: values.queue_url ?? null,
@@ -280,42 +247,12 @@ export const useAdminDashboardActions = ({
           clients_limit: values.clients_limit,
           called_ticket_timeout_seconds:
             values.called_ticket_timeout_seconds ?? null,
-          notification_options: values.notification_options ?? {
-            channels: [],
-          },
+          notification_options: makeQueueNotificationOptions(values.notification_options),
           poster_title: values.poster_title ?? null,
           poster_subtitle: values.poster_subtitle ?? null,
           queue_url: values.queue_url,
         }),
       );
-    },
-    [dashboard],
-  );
-
-  const submitFeedback = useCallback(
-    async (values: FeedbackFormValues) => {
-      const payload = {
-        type: values.type,
-        title: values.title,
-        message: values.message,
-        rating: values.rating ?? null,
-        status: values.status,
-        branch: values.branch ?? null,
-        queue: values.queue ?? null,
-        ticket: values.ticket ?? null,
-      };
-
-      if (dashboard.editingFeedback) {
-        await makeRequest(
-          dashboard.updateFeedbackMutation.mutateAsync({
-            id: dashboard.editingFeedback.id,
-            payload,
-          }),
-        );
-        return;
-      }
-
-      await makeRequest(dashboard.createFeedbackMutation.mutateAsync(payload));
     },
     [dashboard],
   );
@@ -407,14 +344,11 @@ export const useAdminDashboardActions = ({
     openEditOperator,
     openCreateQueue,
     openEditQueue,
-    openCreateFeedback,
-    openEditFeedback,
     openQueueDetails,
     closeQueueDetails,
     submitBranch,
     submitOperator,
     submitQueue,
-    submitFeedback,
     submitCompany,
     submitAdminSettings,
     assignOperatorToSelectedQueue,

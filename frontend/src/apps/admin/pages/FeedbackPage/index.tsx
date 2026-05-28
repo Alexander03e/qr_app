@@ -3,8 +3,7 @@ import {
   feedbackStatusColors,
   feedbackTypeColors,
 } from "@apps/admin/features/Dashboard/constants";
-import { PlusOutlined } from "@ant-design/icons";
-import { Button, Popconfirm, Rate, Space, Table, Tag } from "antd";
+import { Button, Popconfirm, Rate, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +13,7 @@ import { useAdminDashboardContext } from "@apps/admin/features/Dashboard/context
 
 export const FeedbackPage = () => {
   const { t } = useTranslation();
-  const { dashboard, actions } = useAdminDashboardContext();
+  const { dashboard } = useAdminDashboardContext();
 
   const branchNameById = useMemo(
     () => new Map(dashboard.branches.map((branch) => [branch.id, branch.name])),
@@ -46,6 +45,20 @@ export const FeedbackPage = () => {
           value ? <Rate disabled value={value} /> : "-",
       },
       {
+        title: t("admin.feedback.message"),
+        dataIndex: "message",
+        key: "message",
+        width: 320,
+        render: (value: string) => (
+          <Typography.Paragraph
+            style={{ margin: 0, maxWidth: 320 }}
+            ellipsis={{ rows: 2, tooltip: value }}
+          >
+            {value}
+          </Typography.Paragraph>
+        ),
+      },
+      {
         title: t("admin.feedback.status"),
         dataIndex: "status",
         key: "status",
@@ -72,9 +85,6 @@ export const FeedbackPage = () => {
         key: "actions",
         render: (_, row) => (
           <Space>
-            <Button size="small" onClick={() => actions.openEditFeedback(row)}>
-              {t("admin.feedback.edit")}
-            </Button>
             <Popconfirm
               title={t("admin.common.deleteConfirm")}
               onConfirm={() =>
@@ -91,20 +101,11 @@ export const FeedbackPage = () => {
         ),
       },
     ],
-    [actions, branchNameById, dashboard, queueNameById, t],
+    [branchNameById, dashboard.deleteFeedbackMutation, queueNameById, t],
   );
 
   return (
     <>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={actions.openCreateFeedback}
-        >
-          {t("admin.feedback.add")}
-        </Button>
-      </Space>
       <Table
         rowKey="id"
         loading={dashboard.feedbackLoading}

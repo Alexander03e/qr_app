@@ -18,6 +18,17 @@ export interface WebPushSubscribeRequest {
   subscription: BrowserPushSubscriptionPayload;
 }
 
+export interface WebPushUnsubscribeRequest {
+  queue_id: number;
+  client_id?: string | null;
+  ticket_id?: number | null;
+  endpoint?: string | null;
+}
+
+export interface WebPushUnsubscribeResponse {
+  disabled_count: number;
+}
+
 export interface VkSubscribeRequest {
   queue_id: number;
   client_id?: string | null;

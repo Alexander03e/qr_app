@@ -106,6 +106,8 @@ apt-get install -y certbot python3-certbot-nginx
 certbot --nginx -d cfifeg1.fvds.ru
 ```
 
+Certbot изменит активный Nginx-конфиг в `/etc/nginx/sites-available/cfifeg1.fvds.ru.conf`: добавит `listen 443 ssl`, пути к сертификатам и HTTP -> HTTPS redirect. Deploy-скрипт не будет перезаписывать уже существующий серверный Nginx-конфиг, если явно не передать `FORCE_NGINX_CONFIG=1`.
+
 После включения HTTPS в `/home/develop/queueflow/.env` можно выставить:
 
 ```bash
@@ -152,6 +154,38 @@ bash scripts/deploy.sh
 ```
 
 Скрипт подтянет новые образы, пересоздаст изменившиеся контейнеры, применит миграции backend через entrypoint и перезагрузит Nginx.
+
+## Автообновление через Watchtower
+
+В production compose добавлен Watchtower. Он проверяет Docker registry каждые `WATCHTOWER_INTERVAL_SECONDS` секунд и обновляет только контейнеры с label `com.centurylinklabs.watchtower.enable=true`. Сейчас этот label стоит только на `backend` и `frontend`, поэтому PostgreSQL автоматически не обновляется.
+
+Если GHCR-пакеты приватные, сначала залогинь Docker на сервере:
+
+```bash
+docker login ghcr.io -u Alexander03e
+```
+
+В `/home/develop/queueflow/.env` должны быть переменные:
+
+```bash
+WATCHTOWER_INTERVAL_SECONDS=300
+DOCKER_CONFIG_PATH=/root/.docker/config.json
+DOCKER_API_VERSION=1.44
+```
+
+Запуск или обновление Watchtower:
+
+```bash
+cd /home/develop/queueflow
+sudo bash scripts/deploy.sh
+```
+
+Проверка:
+
+```bash
+docker compose -f /home/develop/queueflow/compose.prod.yml ps watchtower
+docker compose -f /home/develop/queueflow/compose.prod.yml logs watchtower --tail=80
+```
 
 ## Локальный запуск всего комплекта
 

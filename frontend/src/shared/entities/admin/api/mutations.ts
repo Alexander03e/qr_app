@@ -4,15 +4,12 @@ import type {
   AdminBranch,
   AdminCompany,
   AdminCreateBranchPayload,
-  AdminCreateFeedbackPayload,
   AdminCreateOperatorPayload,
   AdminCreateQueuePayload,
-  AdminFeedbackItem,
   AdminOperator,
   AdminQueue,
   AdminUpdateBranchPayload,
   AdminUpdateCompanyPayload,
-  AdminUpdateFeedbackPayload,
   AdminUpdateOperatorPayload,
   AdminUpdateQueuePayload,
   AdminUpdateSettingsPayload,
@@ -32,8 +29,6 @@ export const adminMutationKeys = {
   createQueue: ["admin", "queue", "create"] as const,
   updateQueue: ["admin", "queue", "update"] as const,
   deleteQueue: ["admin", "queue", "delete"] as const,
-  createFeedback: ["admin", "feedback", "create"] as const,
-  updateFeedback: ["admin", "feedback", "update"] as const,
   deleteFeedback: ["admin", "feedback", "delete"] as const,
   updateCompany: ["admin", "company", "update"] as const,
   updateAdminSettings: ["admin", "settings", "update"] as const,
@@ -52,11 +47,6 @@ interface UpdateQueueVariables {
 interface UpdateBranchVariables {
   id: number;
   payload: AdminUpdateBranchPayload;
-}
-
-interface UpdateFeedbackVariables {
-  id: number;
-  payload: AdminUpdateFeedbackPayload;
 }
 
 interface UpdateCompanyVariables {
@@ -202,40 +192,6 @@ export const adminMutationOptions = {
       mutationFn: (id: number) => adminApi.deleteQueue(id),
       onSuccess: async (...args) => {
         await queryClient.invalidateQueries({ queryKey: adminQueryKeys.queues });
-        await onSuccess?.(...args);
-      },
-      ...rest,
-    });
-  },
-
-  createFeedback: (
-    options?: MutationOptionsType<AdminFeedbackItem, AdminCreateFeedbackPayload>,
-  ) => {
-    const { onSuccess, ...rest } = options ?? {};
-
-    return mutationOptions({
-      mutationKey: adminMutationKeys.createFeedback,
-      mutationFn: (payload: AdminCreateFeedbackPayload) =>
-        adminApi.createFeedback(payload),
-      onSuccess: async (...args) => {
-        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.feedback });
-        await onSuccess?.(...args);
-      },
-      ...rest,
-    });
-  },
-
-  updateFeedback: (
-    options?: MutationOptionsType<AdminFeedbackItem, UpdateFeedbackVariables>,
-  ) => {
-    const { onSuccess, ...rest } = options ?? {};
-
-    return mutationOptions({
-      mutationKey: adminMutationKeys.updateFeedback,
-      mutationFn: ({ id, payload }: UpdateFeedbackVariables) =>
-        adminApi.updateFeedback(id, payload),
-      onSuccess: async (...args) => {
-        await queryClient.invalidateQueries({ queryKey: adminQueryKeys.feedback });
         await onSuccess?.(...args);
       },
       ...rest,

@@ -1,6 +1,5 @@
 import type {
   AdminBranch,
-  AdminFeedbackItem,
   AdminOperator,
   AdminQueue,
 } from "@shared/entities/admin/types";
@@ -16,7 +15,6 @@ import type {
   AdminSettingsFormValues,
   BranchFormValues,
   CompanyFormValues,
-  FeedbackFormValues,
   OperatorFormValues,
   OperatorLoadInfo,
   QueueFormValues,
@@ -35,7 +33,6 @@ export const useAdminDashboardController = ({
   const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [operatorModalOpen, setOperatorModalOpen] = useState(false);
   const [queueModalOpen, setQueueModalOpen] = useState(false);
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [queueDetailsOpen, setQueueDetailsOpen] = useState(false);
 
   const [editingBranch, setEditingBranch] = useState<AdminBranch | null>(null);
@@ -43,8 +40,6 @@ export const useAdminDashboardController = ({
     null,
   );
   const [editingQueue, setEditingQueue] = useState<AdminQueue | null>(null);
-  const [editingFeedback, setEditingFeedback] =
-    useState<AdminFeedbackItem | null>(null);
   const [selectedQueue, setSelectedQueue] = useState<AdminQueue | null>(null);
   const [selectedOperatorForQueue, setSelectedOperatorForQueue] = useState<
     number | null
@@ -53,7 +48,6 @@ export const useAdminDashboardController = ({
   const [branchForm] = Form.useForm<BranchFormValues>();
   const [operatorForm] = Form.useForm<OperatorFormValues>();
   const [queueForm] = Form.useForm<QueueFormValues>();
-  const [feedbackForm] = Form.useForm<FeedbackFormValues>();
   const [companyForm] = Form.useForm<CompanyFormValues>();
   const [adminSettingsForm] = Form.useForm<AdminSettingsFormValues>();
 
@@ -158,28 +152,6 @@ export const useAdminDashboardController = ({
     adminMutationOptions.deleteQueue({
       onSuccess: () => {
         message.success(t("admin.messages.queueDeleted"));
-      },
-    }),
-  );
-
-  const createFeedbackMutation = useMutation(
-    adminMutationOptions.createFeedback({
-      onSuccess: () => {
-        setFeedbackModalOpen(false);
-        setEditingFeedback(null);
-        feedbackForm.resetFields();
-        message.success(t("admin.messages.feedbackCreated"));
-      },
-    }),
-  );
-
-  const updateFeedbackMutation = useMutation(
-    adminMutationOptions.updateFeedback({
-      onSuccess: () => {
-        setFeedbackModalOpen(false);
-        setEditingFeedback(null);
-        feedbackForm.resetFields();
-        message.success(t("admin.messages.feedbackUpdated"));
       },
     }),
   );
@@ -310,8 +282,6 @@ export const useAdminDashboardController = ({
     setOperatorModalOpen,
     queueModalOpen,
     setQueueModalOpen,
-    feedbackModalOpen,
-    setFeedbackModalOpen,
     queueDetailsOpen,
     setQueueDetailsOpen,
     editingBranch,
@@ -320,8 +290,6 @@ export const useAdminDashboardController = ({
     setEditingOperator,
     editingQueue,
     setEditingQueue,
-    editingFeedback,
-    setEditingFeedback,
     selectedQueue,
     setSelectedQueue,
     selectedOperatorForQueue,
@@ -329,7 +297,6 @@ export const useAdminDashboardController = ({
     branchForm,
     operatorForm,
     queueForm,
-    feedbackForm,
     companyForm,
     adminSettingsForm,
     companies,
@@ -351,8 +318,6 @@ export const useAdminDashboardController = ({
     createQueueMutation,
     updateQueueMutation,
     deleteQueueMutation,
-    createFeedbackMutation,
-    updateFeedbackMutation,
     deleteFeedbackMutation,
     updateCompanyMutation,
     updateAdminSettingsMutation,

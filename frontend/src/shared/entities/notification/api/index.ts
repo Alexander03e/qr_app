@@ -7,6 +7,8 @@ import type {
   VkSubscribeRequest,
   WebPushPublicKeyResponse,
   WebPushSubscribeRequest,
+  WebPushUnsubscribeRequest,
+  WebPushUnsubscribeResponse,
 } from "../types";
 
 class NotificationsApi {
@@ -18,6 +20,13 @@ class NotificationsApi {
     payload: WebPushSubscribeRequest,
   ): Promise<NotificationSubscriptionResponse> {
     return (await $api.post("/notifications/web-push/subscribe/", payload)).data;
+  }
+
+  async unsubscribeWebPush(
+    payload: WebPushUnsubscribeRequest,
+  ): Promise<WebPushUnsubscribeResponse> {
+    return (await $api.post("/notifications/web-push/unsubscribe/", payload))
+      .data;
   }
 
   async subscribeVk(

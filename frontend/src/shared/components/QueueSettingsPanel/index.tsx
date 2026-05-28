@@ -9,13 +9,17 @@ import {
   Switch,
 } from "antd";
 import { useEffect } from "react";
+import {
+  QUEUE_NOTIFICATION_CHANNEL_OPTIONS,
+  makeQueueNotificationOptions,
+} from "@shared/entities/queue/notificationOptions";
 
 export type QueueSettingsPayload = {
   name: string;
   language: "ru" | "en";
   clients_limit: number | null;
   called_ticket_timeout_seconds: number | null;
-  notification_options: { channels: string[] };
+  notification_options: ReturnType<typeof makeQueueNotificationOptions>;
   queue_url: string | null;
   poster_title: string | null;
   poster_subtitle: string | null;
@@ -64,10 +68,7 @@ export const QueueSettingsPanel = ({
       timerEnabled: (queue.called_ticket_timeout_seconds ?? 0) > 0,
       notification_options: {
         channels:
-          queue.notification_options &&
-          Array.isArray(queue.notification_options.channels)
-            ? queue.notification_options.channels
-            : [],
+          makeQueueNotificationOptions(queue.notification_options).channels,
       },
       queue_url: queue.queue_url,
       poster_title: queue.poster_title,
@@ -87,9 +88,9 @@ export const QueueSettingsPanel = ({
           called_ticket_timeout_seconds: values.timerEnabled
             ? Number(values.called_ticket_timeout_seconds ?? 300)
             : null,
-          notification_options: {
-            channels: values.notification_options?.channels ?? [],
-          },
+          notification_options: makeQueueNotificationOptions(
+            values.notification_options,
+          ),
           queue_url: values.queue_url ?? null,
           poster_title: values.poster_title ?? null,
           poster_subtitle: values.poster_subtitle ?? null,
@@ -148,12 +149,7 @@ export const QueueSettingsPanel = ({
         label="Каналы уведомлений"
       >
         <Checkbox.Group
-          options={[
-            { label: "SMS", value: "sms" },
-            { label: "VK", value: "vk" },
-            { label: "Bot", value: "bot" },
-            { label: "Web Push", value: "webpush" },
-          ]}
+          options={[...QUEUE_NOTIFICATION_CHANNEL_OPTIONS]}
         />
       </Form.Item>
 

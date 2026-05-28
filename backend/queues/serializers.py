@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from queues.models import Queue, QueueStatus, Ticket
+from queues.notification_options import SUPPORTED_NOTIFICATION_CHANNELS
 
 
 class QueueSerializer(serializers.ModelSerializer):
@@ -18,7 +19,7 @@ class QueueSerializer(serializers.ModelSerializer):
         if not isinstance(channels, list):
             raise serializers.ValidationError('notification_options.channels должен быть списком.')
 
-        allowed_channels = {'sms', 'vk', 'bot', 'webpush'}
+        allowed_channels = set(SUPPORTED_NOTIFICATION_CHANNELS)
         invalid = [item for item in channels if item not in allowed_channels]
         if invalid:
             raise serializers.ValidationError(f'Недопустимые каналы уведомлений: {invalid}.')
@@ -89,6 +90,7 @@ class QueueSnapshotSerializer(serializers.Serializer):
     queue_id = serializers.IntegerField()
     queue_name = serializers.CharField()
     queue_language = serializers.CharField()
+    notification_options = serializers.JSONField()
     waiting_count = serializers.IntegerField()
     current_ticket = QueueBoardTicketSerializer(allow_null=True)
     waiting_tickets = QueueBoardTicketSerializer(many=True)
@@ -112,4 +114,3 @@ class AdminQueueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Queue
         fields = '__all__'
-
