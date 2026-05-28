@@ -1,26 +1,13 @@
-from importlib import import_module
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema')),
+    path('', include('users.urls')),
+    path('', include('clients.urls')),
+    path('', include('companies.urls')),
+    path('', include('queues.urls')),
+    path('', include('notifications.urls')),
+    path('', include('analytics.urls')),
 ]
-
-# Список приложений, которые должны предоставить файл urls.py
-APPS = [
-    'users',
-    'clients',
-    'companies',
-    'queues',
-    'notifications',
-    'analytics',
-]
-
-for app in APPS:
-    try:
-        import_module(f'{app}.urls')
-    except ModuleNotFoundError:
-        # приложение не предоставляет urls.py — пропускаем
-        continue
-    urlpatterns.append(path('', include(f'{app}.urls')))
