@@ -1,0 +1,28 @@
+.vkIdButtonShell {
+    position: relative;
+    min-height: 44px;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.vkIdButton {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    :global(iframe),
+    :global(button) {
+        max-width: 100%;
+    }
+}
+
+.vkIdLoading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(255 255 255 / 72%);
+    backdrop-filter: blur(2px);
+}

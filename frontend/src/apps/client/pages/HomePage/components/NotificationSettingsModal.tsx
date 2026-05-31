@@ -1,10 +1,11 @@
-import { BellOutlined, MessageOutlined } from "@ant-design/icons";
+import { BellOutlined } from "@ant-design/icons";
 import { Alert, Button, Flex, Modal, Space, Spin, Tag, Typography } from "antd";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useClientNotifications } from "../hooks/useClientNotifications";
 import { useQueueStore } from "@apps/client/store";
 import { normalizeQueueNotificationChannels } from "@shared/entities/queue/notificationOptions";
+import styles from "./NotificationSettingsModal.module.scss";
 
 interface NotificationSettingsModalProps {
   clientId: string | null;
@@ -22,6 +23,7 @@ export const NotificationSettingsModal = ({
   onClose,
 }: NotificationSettingsModalProps) => {
   const { t } = useTranslation();
+  const vkButtonRef = useRef<HTMLDivElement>(null);
   const { queueData } = useQueueStore();
   const enabledChannels = normalizeQueueNotificationChannels(
     queueData?.notification_options,
@@ -30,7 +32,6 @@ export const NotificationSettingsModal = ({
   const isVkAvailable = enabledChannels.includes("vk");
   const hasNotificationChannels = isWebPushAvailable || isVkAvailable;
   const {
-    connectVk,
     disableWebPush,
     enableWebPush,
     feedback,
@@ -42,6 +43,7 @@ export const NotificationSettingsModal = ({
     isVkEnabled,
     isVkLoading,
     loadStatus,
+    mountVkIdButton,
   } = useClientNotifications({ clientId, queueId, ticketId });
 
   useEffect(() => {
@@ -49,6 +51,14 @@ export const NotificationSettingsModal = ({
       loadStatus();
     }
   }, [loadStatus, open]);
+
+  useEffect(() => {
+    if (!open || !isVkAvailable || !vkButtonRef.current) {
+      return undefined;
+    }
+
+    return mountVkIdButton(vkButtonRef.current);
+  }, [isVkAvailable, mountVkIdButton, open]);
 
   return (
     <Modal
@@ -115,16 +125,14 @@ export const NotificationSettingsModal = ({
                 <Tag color="success">{t("client.notifications.enabled")}</Tag>
               ) : null}
             </Space>
-            <Button
-              block
-              icon={<MessageOutlined />}
-              loading={isVkLoading}
-              onClick={() => void connectVk()}
-            >
-              {isVkEnabled
-                ? t("client.notifications.updateVk")
-                : t("client.notifications.connectVk")}
-            </Button>
+            <div className={styles.vkIdButtonShell}>
+              <div ref={vkButtonRef} className={styles.vkIdButton} />
+              {isVkLoading ? (
+                <div className={styles.vkIdLoading}>
+                  <Spin size="small" />
+                </div>
+              ) : null}
+            </div>
           </Flex>
         ) : null}
       </Flex>

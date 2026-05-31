@@ -51,6 +51,7 @@
       "updateVk": "Update VK",
       "vkEnabled": "VK notifications connected",
       "vkFailed": "Failed to connect VK",
+      "vkIdUserUnavailable": "VK ID did not return a user identifier",
       "vkOAuthNotConfigured": "VK OAuth is not configured on the server",
       "vkOAuthPopupBlocked": "The browser blocked the VK authorization window",
       "vkOAuthClosed": "VK authorization window was closed",

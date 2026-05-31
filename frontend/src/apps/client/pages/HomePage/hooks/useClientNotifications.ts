@@ -18,12 +18,146 @@ interface UseClientNotificationsParams {
   ticketId?: number;
 }
 
-interface VkOAuthMessage {
-  source: "queueflow-vk-oauth";
-  status: "success" | "error";
-  message?: string;
-  bot_url?: string | null;
+interface VkIdRenderedWidget {
+  on: (event: unknown, handler: (payload: unknown) => void) => VkIdRenderedWidget;
 }
+
+interface VkIdSdk {
+  Config: {
+    init: (config: {
+      app: number;
+      redirectUrl: string;
+      responseMode: unknown;
+      source: unknown;
+      scope: string;
+    }) => void;
+  };
+  ConfigResponseMode: {
+    Callback: unknown;
+  };
+  ConfigSource: {
+    LOWCODE: unknown;
+  };
+  OneTap: new () => {
+    render: (params: {
+      container: HTMLElement;
+      showAlternativeLogin: boolean;
+    }) => VkIdRenderedWidget;
+  };
+  OneTapInternalEvents: {
+    LOGIN_SUCCESS: unknown;
+  };
+  WidgetEvents: {
+    ERROR: unknown;
+  };
+  Auth: {
+    exchangeCode: (
+      code: string,
+      deviceId: string,
+      codeVerifier?: string,
+    ) => Promise<unknown>;
+    userInfo: (accessToken: string) => Promise<unknown>;
+  };
+}
+
+declare global {
+  interface Window {
+    VKIDSDK?: VkIdSdk;
+  }
+}
+
+const VK_ID_SDK_URL = "https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js";
+let vkIdSdkPromise: Promise<VkIdSdk> | null = null;
+
+const getRecordValue = (value: unknown, key: string): unknown => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  return (value as Record<string, unknown>)[key];
+};
+
+const getNestedValue = (value: unknown, path: string[]): unknown =>
+  path.reduce<unknown>(
+    (currentValue, key) => getRecordValue(currentValue, key),
+    value,
+  );
+
+const readStringOrNumber = (value: unknown): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+};
+
+const findFirstStringOrNumber = (
+  value: unknown,
+  paths: string[][],
+): string | null => {
+  for (const path of paths) {
+    const result = readStringOrNumber(getNestedValue(value, path));
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
+};
+
+const extractVkUserId = (
+  userInfo: unknown,
+  tokenPayload: unknown,
+): string | null =>
+  findFirstStringOrNumber(userInfo, [
+    ["user", "user_id"],
+    ["user", "id"],
+    ["user_id"],
+    ["id"],
+    ["sub"],
+    ["profile", "id"],
+  ]) ??
+  findFirstStringOrNumber(tokenPayload, [
+    ["user_id"],
+    ["id"],
+    ["user", "user_id"],
+    ["user", "id"],
+  ]);
+
+const extractAccessToken = (tokenPayload: unknown): string | null =>
+  findFirstStringOrNumber(tokenPayload, [["access_token"], ["accessToken"]]);
+
+const loadVkIdSdk = async (): Promise<VkIdSdk> => {
+  if (window.VKIDSDK) {
+    return window.VKIDSDK;
+  }
+
+  if (vkIdSdkPromise) {
+    return vkIdSdkPromise;
+  }
+
+  vkIdSdkPromise = new Promise<VkIdSdk>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = VK_ID_SDK_URL;
+    script.async = true;
+    script.onload = () => {
+      if (window.VKIDSDK) {
+        resolve(window.VKIDSDK);
+        return;
+      }
+
+      reject(new Error("VK ID SDK is unavailable"));
+    };
+    script.onerror = () => reject(new Error("VK ID SDK failed to load"));
+    document.head.appendChild(script);
+  });
+
+  return vkIdSdkPromise;
+};
 
 const urlBase64ToArrayBuffer = (base64String: string): ArrayBuffer => {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -260,80 +394,16 @@ export const useClientNotifications = ({
     }
   }, [clientId, isPushLoading, queueId, t, ticketId]);
 
-  const connectVk = useCallback(
-    async () => {
-      if (!queueId || !ticketId || isVkLoading) {
-        return;
-      }
+  const mountVkIdButton = useCallback(
+    (container: HTMLElement) => {
+      let isCancelled = false;
+      let isLoginRunning = false;
 
-      setIsVkLoading(true);
-      setFeedback(null);
-      try {
-        const oauthStart = await notificationsApi.startVkOAuth({
-          queue_id: queueId,
-          client_id: clientId,
-          ticket_id: ticketId,
-        });
-        if (!oauthStart.configured || !oauthStart.auth_url) {
-          throw new Error(t("client.notifications.vkOAuthNotConfigured"));
+      const handleConnectionError = (error: unknown) => {
+        if (isCancelled) {
+          return;
         }
 
-        const popup = window.open(
-          oauthStart.auth_url,
-          "queueflow-vk-oauth",
-          "popup=yes,width=520,height=720",
-        );
-        if (!popup) {
-          throw new Error(t("client.notifications.vkOAuthPopupBlocked"));
-        }
-
-        await new Promise<VkOAuthMessage>((resolve, reject) => {
-          const timeoutId = window.setTimeout(() => {
-            cleanup();
-            reject(new Error(t("client.notifications.vkOAuthTimeout")));
-          }, 180000);
-
-          const intervalId = window.setInterval(() => {
-            if (popup.closed) {
-              cleanup();
-              reject(new Error(t("client.notifications.vkOAuthClosed")));
-            }
-          }, 500);
-
-          const handleMessage = (event: MessageEvent) => {
-            const data = event.data as Partial<VkOAuthMessage>;
-            if (data?.source !== "queueflow-vk-oauth") {
-              return;
-            }
-
-            cleanup();
-            if (data.status === "success") {
-              resolve(data as VkOAuthMessage);
-              return;
-            }
-
-            reject(
-              new Error(
-                data.message || t("client.notifications.vkFailed"),
-              ),
-            );
-          };
-
-          function cleanup() {
-            window.clearTimeout(timeoutId);
-            window.clearInterval(intervalId);
-            window.removeEventListener("message", handleMessage);
-          }
-
-          window.addEventListener("message", handleMessage);
-        });
-
-        setIsVkEnabled(true);
-        setFeedback({
-          type: "success",
-          message: t("client.notifications.vkEnabled"),
-        });
-      } catch (error) {
         setFeedback({
           type: "error",
           message:
@@ -343,15 +413,124 @@ export const useClientNotifications = ({
                   defaultMessage: t("client.notifications.vkFailed"),
                 }),
         });
-      } finally {
-        setIsVkLoading(false);
-      }
+      };
+
+      const mount = async () => {
+        if (!queueId || !ticketId) {
+          return;
+        }
+
+        setIsVkLoading(true);
+        try {
+          const oauthStart = await notificationsApi.startVkOAuth({
+            queue_id: queueId,
+            client_id: clientId,
+            ticket_id: ticketId,
+          });
+          if (!oauthStart.configured || !oauthStart.auth_url) {
+            throw new Error(t("client.notifications.vkOAuthNotConfigured"));
+          }
+
+          const authUrl = new URL(oauthStart.auth_url);
+          const appId = Number(authUrl.searchParams.get("client_id"));
+          const redirectUrl = authUrl.searchParams.get("redirect_uri");
+          if (!Number.isFinite(appId) || !redirectUrl) {
+            throw new Error(t("client.notifications.vkFailed"));
+          }
+
+          const VKID = await loadVkIdSdk();
+          if (isCancelled) {
+            return;
+          }
+
+          VKID.Config.init({
+            app: appId,
+            redirectUrl,
+            responseMode: VKID.ConfigResponseMode.Callback,
+            source: VKID.ConfigSource.LOWCODE,
+            scope: "",
+          });
+
+          container.replaceChildren();
+          const oneTap = new VKID.OneTap();
+          oneTap
+            .render({
+              container,
+              showAlternativeLogin: true,
+            })
+            .on(VKID.WidgetEvents.ERROR, handleConnectionError)
+            .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, async (payload) => {
+              if (isLoginRunning || isCancelled) {
+                return;
+              }
+
+              isLoginRunning = true;
+              setIsVkLoading(true);
+              setFeedback(null);
+              try {
+                const code = readStringOrNumber(getRecordValue(payload, "code"));
+                const deviceId = readStringOrNumber(
+                  getRecordValue(payload, "device_id"),
+                );
+                if (!code || !deviceId) {
+                  throw new Error(t("client.notifications.vkFailed"));
+                }
+
+                const tokenPayload = await VKID.Auth.exchangeCode(code, deviceId);
+                const accessToken = extractAccessToken(tokenPayload);
+                const userInfo = accessToken
+                  ? await VKID.Auth.userInfo(accessToken)
+                  : null;
+                const vkUserId = extractVkUserId(userInfo, tokenPayload);
+                if (!vkUserId) {
+                  throw new Error(t("client.notifications.vkIdUserUnavailable"));
+                }
+
+                await notificationsApi.subscribeVk({
+                  queue_id: queueId,
+                  client_id: clientId,
+                  ticket_id: ticketId,
+                  vk_id: vkUserId,
+                });
+
+                setIsVkEnabled(true);
+                setFeedback({
+                  type: "success",
+                  message: t("client.notifications.vkEnabled"),
+                });
+
+                if (oauthStart.bot_url) {
+                  window.open(oauthStart.bot_url, "_blank", "noopener,noreferrer");
+                }
+              } catch (error) {
+                handleConnectionError(error);
+              } finally {
+                isLoginRunning = false;
+                if (!isCancelled) {
+                  setIsVkLoading(false);
+                }
+              }
+            });
+        } catch (error) {
+          handleConnectionError(error);
+        } finally {
+          if (!isCancelled) {
+            setIsVkLoading(false);
+          }
+        }
+      };
+
+      void mount();
+
+      return () => {
+        isCancelled = true;
+        container.replaceChildren();
+      };
     },
-    [clientId, isVkLoading, queueId, t, ticketId],
+    [clientId, queueId, t, ticketId],
   );
 
   return {
-    connectVk,
     disableWebPush,
     enableWebPush,
     feedback,
@@ -363,5 +542,6 @@ export const useClientNotifications = ({
     isVkEnabled,
     isVkLoading,
     loadStatus,
+    mountVkIdButton,
   };
 };

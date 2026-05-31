@@ -53,6 +53,7 @@
       "updateVk": "Обновить VK",
       "vkEnabled": "VK-уведомления подключены",
       "vkFailed": "Не удалось подключить VK",
+      "vkIdUserUnavailable": "VK ID не вернул идентификатор пользователя",
       "vkOAuthNotConfigured": "VK OAuth не настроен на сервере",
       "vkOAuthPopupBlocked": "Браузер заблокировал окно авторизации VK",
       "vkOAuthClosed": "Окно авторизации VK закрыто",
