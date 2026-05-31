@@ -5,6 +5,21 @@
     border-radius: 8px;
 }
 
+.vkFallbackButton {
+    min-height: 44px;
+    border-color: #0077ff;
+    background: #0077ff;
+    color: #fff;
+    font-weight: 600;
+
+    &:hover,
+    &:focus {
+        border-color: #006be6 !important;
+        background: #006be6 !important;
+        color: #fff !important;
+    }
+}
+
 .vkIdButton {
     min-height: 44px;
     display: flex;
@@ -15,6 +30,15 @@
     :global(button) {
         max-width: 100%;
     }
+}
+
+.vkIdButtonHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .vkIdLoading {
