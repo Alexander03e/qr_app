@@ -2,6 +2,7 @@ export const PATHS = {
   CLIENT: "/c",
   OPERATOR: "/o",
   ADMIN: "/a",
+  BOARD: "/board"
 };
 
 export const POLLING_INTERVAL_MS = 1000;

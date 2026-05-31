@@ -13,6 +13,9 @@ const OperatorApp = lazy(() =>
 const AdminApp = lazy(() =>
   import(`@apps/admin`).then((module) => ({ default: module.AdminApp })),
 );
+const Board = lazy(() =>
+  import(`@apps/board`).then((module) => ({ default: module.Board })),
+);
 
 export const AppRouter = () => {
   return (
@@ -29,6 +32,10 @@ export const AppRouter = () => {
         <Route
           path={buildRouterPath(PATHS.ADMIN, "*")}
           element={<AdminApp />}
+        />
+        <Route
+          path={buildRouterPath(PATHS.BOARD, ":queueId")}
+          element={<Board />}
         />
         <Route path="_debug" element={<DebugPage />} />
         <Route element={<Navigate to="_debug" />} index />

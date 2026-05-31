@@ -79,6 +79,7 @@
     "feedback": {
       "title": "Feedback",
       "type": "Request type",
+      "timestamp": "Date",
       "rating": "Service rating",
       "types": {
         "FEEDBACK": "Feedback",
@@ -221,6 +222,7 @@
       "type": "Type",
       "status": "Status",
       "title": "Title",
+      "timestamp": "Date",
       "message": "Message",
       "branch": "Branch",
       "queue": "Queue",

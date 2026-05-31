@@ -5,7 +5,6 @@ import enUS from "antd/locale/en_US";
 import ruRU from "antd/locale/ru_RU";
 import { useTranslation } from "react-i18next";
 import { queryClient } from "@shared/api";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { APP_THEME } from "./theme";
 
 function App() {
@@ -17,7 +16,7 @@ function App() {
     <ConfigProvider locale={antdLocale} theme={APP_THEME}>
       <QueryClientProvider client={queryClient}>
         <AppRouter />
-        <ReactQueryDevtools initialIsOpen />
+        {/* <ReactQueryDevtools initialIsOpen /> */}
       </QueryClientProvider>
     </ConfigProvider>
   );

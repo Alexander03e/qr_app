@@ -3,13 +3,25 @@ import {
   feedbackStatusColors,
   feedbackTypeColors,
 } from "@apps/admin/features/Dashboard/constants";
-import { Button, Popconfirm, Rate, Space, Table, Tag, Typography } from "antd";
+import {
+  Button,
+  Flex,
+  Modal,
+  Popconfirm,
+  Rate,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { makeRequest } from "@shared/helper/handler";
 
 import { useAdminDashboardContext } from "@apps/admin/features/Dashboard/context/useAdminDashboardContext";
+import i18n from "@shared/config/i18n";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 
 export const FeedbackPage = () => {
   const { t } = useTranslation();
@@ -24,6 +36,13 @@ export const FeedbackPage = () => {
     [dashboard.queues],
   );
 
+  const feedbackValueTranslate = useMemo(
+    () => ({
+      FEEDBACK: t("client.feedback.types.FEEDBACK"),
+      COMPLAINT: t("client.feedback.types.COMPLAINT"),
+    }),
+    [t],
+  );
   const columns: ColumnsType<AdminFeedbackItem> = useMemo(
     () => [
       { title: "ID", dataIndex: "id", key: "id", width: 80 },
@@ -32,30 +51,66 @@ export const FeedbackPage = () => {
         dataIndex: "type",
         key: "type",
         render: (value: AdminFeedbackItem["type"]) => (
-          <Tag color={feedbackTypeColors[value]}>{value}</Tag>
+          <Tag color={feedbackTypeColors[value]}>
+            {feedbackValueTranslate[value]}
+          </Tag>
         ),
       },
-      { title: t("admin.feedback.title"), dataIndex: "title", key: "title" },
+      {
+        title: t("admin.feedback.timestamp"),
+        key: "timestamp",
+        render: (_, row) => (
+          <>
+            {new Date(row.created_at).toLocaleString(i18n.language, {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </>
+        ),
+      },
       {
         title: t("admin.feedback.rating"),
         dataIndex: "rating",
         key: "rating",
         width: 160,
         render: (value: number | null) =>
-          value ? <Rate disabled value={value} /> : "-",
+          value ? <Rate size="small" disabled value={value} /> : "-",
       },
       {
         title: t("admin.feedback.message"),
         dataIndex: "message",
         key: "message",
-        width: 320,
+        width: 5,
         render: (value: string) => (
-          <Typography.Paragraph
-            style={{ margin: 0, maxWidth: 320 }}
-            ellipsis={{ rows: 2, tooltip: value }}
+          <Flex
+            gap={6}
+            align="center"
+            style={{ cursor: "pointer" }}
+            onClick={() =>
+              Modal.info({
+                content: value,
+                icon: null,
+                closeIcon: true,
+                width: 600,
+                closable: true,
+                centered: true,
+                maskClosable: true,
+              })
+            }
           >
-            {value}
-          </Typography.Paragraph>
+            <Typography.Paragraph
+              title="none"
+              style={{ margin: 0, maxWidth: 120 }}
+              ellipsis={{ rows: 1, tooltip: value }}
+            >
+              {value}
+            </Typography.Paragraph>
+
+            <QuestionCircleOutlined />
+          </Flex>
         ),
       },
       {
@@ -101,7 +156,13 @@ export const FeedbackPage = () => {
         ),
       },
     ],
-    [branchNameById, dashboard.deleteFeedbackMutation, queueNameById, t],
+    [
+      branchNameById,
+      feedbackValueTranslate,
+      dashboard.deleteFeedbackMutation,
+      queueNameById,
+      t,
+    ],
   );
 
   return (

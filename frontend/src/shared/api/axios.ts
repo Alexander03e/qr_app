@@ -50,3 +50,21 @@ $api.interceptors.request.use((config) => {
 
   return config;
 });
+
+$api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403) {
+      const token = resolveAuthTokenByPath(error.config.url);
+      if (token) {
+        localStorage.removeItem(
+          token === localStorage.getItem(ADMIN_AUTH_TOKEN_STORAGE_KEY)
+            ? ADMIN_AUTH_TOKEN_STORAGE_KEY
+            : OPERATOR_AUTH_TOKEN_STORAGE_KEY
+        );
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
