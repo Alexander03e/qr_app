@@ -30,6 +30,8 @@ template_xelatex/_minted/
 !/frontend/.dockerignore
 !/frontend/src/
 !/frontend/src/**
+!/landing/
+!/landing/**
 !/backend/
 !/backend/**
 !/текущий_функционал.md
@@ -45,3 +47,5 @@ backend/**/*.py[cod]
 backend/.pytest_cache/
 backend/.mypy_cache/
 AGENTS.md
+
+landing/**

@@ -112,6 +112,7 @@ Certbot изменит активный Nginx-конфиг в `/etc/nginx/sites-
 
 ```bash
 DJANGO_CSRF_TRUSTED_ORIGINS=https://qq-flow.ru
+DJANGO_CORS_ALLOW_ALL_ORIGINS=False
 DJANGO_CORS_ALLOWED_ORIGINS=https://qq-flow.ru
 DJANGO_SESSION_COOKIE_SECURE=True
 DJANGO_CSRF_COOKIE_SECURE=True

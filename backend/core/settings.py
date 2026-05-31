@@ -29,7 +29,7 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 def get_csv_env(name: str, default: str = '') -> list[str]:
     return [value.strip() for value in os.getenv(name, default).split(',') if value.strip()]
 
-ALLOWED_HOSTS = get_csv_env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend')
+ALLOWED_HOSTS = get_csv_env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend,qq-flow.ru')
 
 # Application definition
 
@@ -71,6 +71,8 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('DJANGO_CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 CORS_ALLOWED_ORIGINS = get_csv_env('DJANGO_CORS_ALLOWED_ORIGINS')
+CORS_ALLOW_CREDENTIALS = os.getenv('DJANGO_CORS_ALLOW_CREDENTIALS', 'True').lower() == 'true'
+CORS_ALLOW_PRIVATE_NETWORK = os.getenv('DJANGO_CORS_ALLOW_PRIVATE_NETWORK', 'True').lower() == 'true'
 CSRF_TRUSTED_ORIGINS = get_csv_env('DJANGO_CSRF_TRUSTED_ORIGINS')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'False').lower() == 'true'

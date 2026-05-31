@@ -136,6 +136,7 @@ export const NotificationSettingsModal = ({
                   block
                   className={styles.vkFallbackButton}
                   icon={<MessageOutlined />}
+                  size="small"
                   loading={isVkLoading}
                   onClick={() => void connectVk()}
                 >
@@ -147,9 +148,7 @@ export const NotificationSettingsModal = ({
               <div
                 ref={vkButtonRef}
                 className={
-                  isVkWidgetReady
-                    ? styles.vkIdButton
-                    : styles.vkIdButtonHidden
+                  isVkWidgetReady ? styles.vkIdButton : styles.vkIdButtonHidden
                 }
               />
               {isVkLoading ? (

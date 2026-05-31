@@ -7,7 +7,7 @@ export const DebugPage = () => {
       <Link to="/c/1/">client</Link>
       <Link to="/o/1/">operator</Link>
       <Link to="/a/1/">admin</Link>
-      <Link to="/board">board</Link>
+      <Link to="/board/1/">board</Link>
     </Flex>
   );
 };
