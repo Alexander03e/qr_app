@@ -1,7 +1,9 @@
 import logging
 import math
 from datetime import timedelta
+from hashlib import sha256
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -17,6 +19,8 @@ from users.models import User
 logger = logging.getLogger(__name__)
 CALLED_TICKET_TIMEOUT_SECONDS = 5 * 60
 SERVICE_HISTORY_LIMIT = 30
+SNAPSHOT_CACHE_TTL_SECONDS = 1
+EXPIRE_CALLED_TICKETS_CHECK_TTL_SECONDS = 1
 
 
 def normalize_ticket_status(status) -> str:
@@ -138,19 +142,59 @@ def estimate_client_wait_seconds(
     )
 
 
-def expire_called_tickets(queue: Queue) -> None:
+def get_queue_snapshot_cache_version_key(queue_id: int | str) -> str:
+    return f'queue:{queue_id}:snapshot:version'
+
+
+def get_queue_snapshot_cache_version(queue_id: int | str) -> int:
+    key = get_queue_snapshot_cache_version_key(queue_id)
+    version = cache.get(key)
+    if version is None:
+        cache.add(key, 1, timeout=None)
+        version = cache.get(key, 1)
+    return int(version)
+
+
+def get_queue_snapshot_cache_key(
+    *,
+    queue_id: int | str,
+    client_id: str | None,
+    version: int,
+) -> str:
+    if client_id:
+        normalized_client = sha256(str(client_id).encode('utf-8')).hexdigest()
+    else:
+        normalized_client = 'anonymous'
+
+    return f'queue:{queue_id}:snapshot:v{version}:{normalized_client}'
+
+
+def invalidate_queue_snapshot_cache(queue_id: int | str) -> None:
+    key = get_queue_snapshot_cache_version_key(queue_id)
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 2, timeout=None)
+
+
+def schedule_queue_snapshot_cache_invalidation(queue_id: int | str) -> None:
+    invalidate_queue_snapshot_cache(queue_id)
+    transaction.on_commit(lambda: invalidate_queue_snapshot_cache(queue_id))
+
+
+def expire_called_tickets(queue: Queue) -> bool:
     timeout_seconds = get_called_ticket_timeout_seconds(queue)
     if timeout_seconds <= 0:
-        return
+        return False
 
     now = timezone.now()
     threshold = now - timedelta(seconds=timeout_seconds)
-    expired_tickets = queue.tickets.filter(
+    expired_tickets = list(queue.tickets.filter(
         status=QueueStatus.CALLED,
     ).filter(
         Q(called_at__lte=threshold) |
         Q(called_at__isnull=True, updated_at__lte=threshold)
-    )
+    ))
 
     for ticket in expired_tickets:
         previous_status = ticket.status
@@ -162,6 +206,19 @@ def expire_called_tickets(queue: Queue) -> None:
             previous_status=previous_status,
             new_status=ticket.status,
         )
+    return bool(expired_tickets)
+
+
+def expire_called_tickets_if_due(queue: Queue) -> bool:
+    cache_key = f'queue:{queue.id}:expire-called-check'
+    if not cache.add(cache_key, '1', timeout=EXPIRE_CALLED_TICKETS_CHECK_TTL_SECONDS):
+        return False
+
+    has_expired_tickets = expire_called_tickets(queue)
+    if has_expired_tickets:
+        invalidate_queue_snapshot_cache(queue.id)
+
+    return has_expired_tickets
 
 
 def resolve_client_from_identifier(client_id: str | None):
@@ -183,8 +240,7 @@ def resolve_client_from_identifier(client_id: str | None):
             return None
 
 
-def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
-    expire_called_tickets(queue)
+def build_queue_snapshot_payload(queue: Queue, client_id: str | None = None) -> dict:
     timeout_seconds = get_called_ticket_timeout_seconds(queue)
     notification_options = normalize_queue_notification_options(queue.notification_options)
 
@@ -289,14 +345,42 @@ def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
     }
 
 
+def build_queue_snapshot(queue: Queue, client_id: str | None = None) -> dict:
+    expire_called_tickets(queue)
+    return build_queue_snapshot_payload(queue=queue, client_id=client_id)
+
+
 def get_queue_snapshot(queue_id: int, client_id: str | None = None) -> dict:
+    version = get_queue_snapshot_cache_version(queue_id)
+    cache_key = get_queue_snapshot_cache_key(
+        queue_id=queue_id,
+        client_id=client_id,
+        version=version,
+    )
+    cached_snapshot = cache.get(cache_key)
+    if cached_snapshot is not None:
+        return cached_snapshot
+
     try:
         queue = Queue.objects.get(pk=queue_id)
     except Queue.DoesNotExist as exc:
         logger.exception('Queue not found while building snapshot. queue_id=%s', queue_id)
         raise NotFound('Очередь не найдена.') from exc
 
-    return build_queue_snapshot(queue=queue, client_id=client_id)
+    if expire_called_tickets_if_due(queue):
+        version = get_queue_snapshot_cache_version(queue_id)
+        cache_key = get_queue_snapshot_cache_key(
+            queue_id=queue_id,
+            client_id=client_id,
+            version=version,
+        )
+        cached_snapshot = cache.get(cache_key)
+        if cached_snapshot is not None:
+            return cached_snapshot
+
+    snapshot = build_queue_snapshot_payload(queue=queue, client_id=client_id)
+    cache.set(cache_key, snapshot, timeout=SNAPSHOT_CACHE_TTL_SECONDS)
+    return snapshot
 
 def add_new_ticket(queue: Queue, client_id: int, initial_ticket_number: int) -> Ticket:
     # 1. Атомарно увеличиваем счетчик в очереди и получаем обновленный объект
@@ -308,13 +392,15 @@ def add_new_ticket(queue: Queue, client_id: int, initial_ticket_number: int) -> 
         next_number = queue.last_ticket_number
         display_number = f'Q{queue.id}-{next_number:04d}'
 
-        return Ticket.objects.create(
+        ticket = Ticket.objects.create(
             queue=queue,
             display_number=display_number,
             client_id=client_id,
             initial_ticket_number=initial_ticket_number,
             status=QueueStatus.WAITING
         )
+        schedule_queue_snapshot_cache_invalidation(queue.id)
+        return ticket
 
 
 def resolve_client(queue: Queue, client_data: dict | None):
@@ -497,6 +583,7 @@ def update_ticket(
             assign_ticket_operator(ticket, operator, update_fields)
 
         ticket.save(update_fields=update_fields)
+        schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
         schedule_ticket_status_changed_notification(
             ticket_id=ticket.id,
             previous_status=current_status,
@@ -514,6 +601,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
             raise NotFound('Очередь не найдена.') from exc
 
         now = timezone.now()
+        has_changes = False
         current_in_service_ticket = (
             queue.tickets
             .filter(status=QueueStatus.IN_SERVICE)
@@ -533,6 +621,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
                 overwrite=False,
             )
             current_in_service_ticket.save(update_fields=update_fields)
+            has_changes = True
             schedule_ticket_status_changed_notification(
                 ticket_id=current_in_service_ticket.id,
                 previous_status=previous_status,
@@ -558,6 +647,7 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
                 overwrite=False,
             )
             current_called_ticket.save(update_fields=update_fields)
+            has_changes = True
             schedule_ticket_status_changed_notification(
                 ticket_id=current_called_ticket.id,
                 previous_status=previous_status,
@@ -580,11 +670,15 @@ def invite_next_ticket(queue_id: int, operator: User | None = None) -> Ticket | 
             next_ticket.finished_at = None
             assign_ticket_operator(next_ticket, operator, update_fields)
             next_ticket.save(update_fields=update_fields)
+            has_changes = True
             schedule_ticket_status_changed_notification(
                 ticket_id=next_ticket.id,
                 previous_status=previous_status,
                 new_status=next_ticket.status,
             )
+
+        if has_changes:
+            schedule_queue_snapshot_cache_invalidation(queue.id)
 
         return next_ticket
 
@@ -620,6 +714,7 @@ def append_to_queue(ticket_id: int) -> Ticket:
         ticket.operator = None
         ticket.enqueued_at = timezone.now()
         ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+        schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
         schedule_ticket_status_changed_notification(
             ticket_id=ticket.id,
             previous_status=previous_status,
@@ -645,6 +740,7 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
             ticket.operator = None
             ticket.enqueued_at = timezone.now()
             ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+            schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
             schedule_ticket_status_changed_notification(
                 ticket_id=ticket.id,
                 previous_status=previous_status,
@@ -675,6 +771,7 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
         if ticket.enqueued_at == next_ticket.enqueued_at:
             ticket.enqueued_at = next_ticket.enqueued_at + timedelta(microseconds=1)
             ticket.save(update_fields=['enqueued_at', 'updated_at'])
+            schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
             return ticket
 
         current_enqueued_at = ticket.enqueued_at
@@ -682,6 +779,7 @@ def skip_one_ahead(ticket_id: int) -> Ticket:
         next_ticket.enqueued_at = current_enqueued_at
         ticket.save(update_fields=['enqueued_at', 'updated_at'])
         next_ticket.save(update_fields=['enqueued_at', 'updated_at'])
+        schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
 
         return ticket
 
@@ -727,6 +825,7 @@ def invite_ticket_by_id(
                     overwrite=False,
                 )
                 current_ticket.save(update_fields=update_fields)
+                schedule_queue_snapshot_cache_invalidation(queue.id)
                 schedule_ticket_status_changed_notification(
                     ticket_id=current_ticket.id,
                     previous_status=previous_status,
@@ -741,6 +840,7 @@ def invite_ticket_by_id(
                 current_ticket.operator = None
                 current_ticket.enqueued_at = now
                 current_ticket.save(update_fields=['status', 'finished_at', 'called_at', 'service_started_at', 'operator', 'enqueued_at', 'updated_at'])
+                schedule_queue_snapshot_cache_invalidation(queue.id)
                 schedule_ticket_status_changed_notification(
                     ticket_id=current_ticket.id,
                     previous_status=previous_status,
@@ -755,6 +855,7 @@ def invite_ticket_by_id(
         ticket.finished_at = None
         assign_ticket_operator(ticket, operator, update_fields)
         ticket.save(update_fields=update_fields)
+        schedule_queue_snapshot_cache_invalidation(ticket.queue_id)
         schedule_ticket_status_changed_notification(
             ticket_id=ticket.id,
             previous_status=previous_status,
@@ -808,6 +909,7 @@ def delete_tickets_from_queue(queue_id: int, ticket_ids: list[int]) -> dict:
             )
 
         deleted_count, _ = queue.tickets.filter(id__in=normalized_ids).delete()
+        schedule_queue_snapshot_cache_invalidation(queue.id)
 
         return {
             'queue_id': queue.id,

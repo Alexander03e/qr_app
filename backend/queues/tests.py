@@ -1,6 +1,8 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 from datetime import timedelta
+from unittest.mock import patch
+from django.core.cache import cache
 from django.utils import timezone
 
 from clients.models import Client
@@ -11,6 +13,7 @@ from users.models import AuthToken, Role, User
 
 class QueueTicketApiTests(APITestCase):
 	def setUp(self):
+		cache.clear()
 		self.company = Company.objects.create(name='Acme', timezone='Europe/Moscow')
 		self.branch = Branch.objects.create(
 			company=self.company,
@@ -257,6 +260,48 @@ class QueueTicketApiTests(APITestCase):
 		self.assertEqual(response.data['waiting_tickets'][0]['id'], t1.id)
 		self.assertIsNone(response.data['client_ticket'])
 		self.assertFalse(response.data['client_is_served'])
+
+	def test_queue_snapshot_reuses_cached_payload_for_short_interval(self):
+		queue = Queue.objects.create(branch=self.branch, name='Кэшируемая очередь')
+		Ticket.objects.create(
+			queue=queue,
+			client=self.client_obj,
+			status=QueueStatus.WAITING,
+			display_number='Q1-0101',
+		)
+
+		with patch('queues.services.expire_called_tickets') as expire_mock:
+			first_response = self.client.get(f'/api/v1/queues/{queue.id}/snapshot/', format='json')
+			second_response = self.client.get(f'/api/v1/queues/{queue.id}/snapshot/', format='json')
+
+		self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+		self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+		self.assertEqual(expire_mock.call_count, 1)
+		self.assertEqual(second_response.data['waiting_count'], 1)
+
+	def test_join_invalidates_queue_snapshot_cache(self):
+		queue = Queue.objects.create(branch=self.branch, name='Инвалидация snapshot')
+		initial_response = self.client.get(f'/api/v1/queues/{queue.id}/snapshot/', format='json')
+
+		with self.captureOnCommitCallbacks(execute=True):
+			join_response = self.client.post(
+				'/api/v1/tickets/join/',
+				{
+					'queue_id': queue.id,
+					'client': {
+						'name': 'New Client',
+						'phone': '+79990007777',
+					},
+				},
+				format='json',
+			)
+		next_response = self.client.get(f'/api/v1/queues/{queue.id}/snapshot/', format='json')
+
+		self.assertEqual(initial_response.status_code, status.HTTP_200_OK)
+		self.assertEqual(initial_response.data['waiting_count'], 0)
+		self.assertEqual(join_response.status_code, status.HTTP_201_CREATED)
+		self.assertEqual(next_response.status_code, status.HTTP_200_OK)
+		self.assertEqual(next_response.data['waiting_count'], 1)
 
 	def test_queue_snapshot_contains_client_ticket_for_client_id(self):
 		queue = Queue.objects.create(branch=self.branch, name='Личный статус')

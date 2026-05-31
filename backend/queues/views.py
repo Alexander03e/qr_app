@@ -13,6 +13,7 @@ from queues.services import (
     get_queue_snapshot,
     invite_ticket_by_id,
     invite_next_ticket,
+    invalidate_queue_snapshot_cache,
     join_queue,
     remove_ticket_from_queue,
     skip_one_ahead,
@@ -205,7 +206,8 @@ class AdminQueueViewSet(viewsets.ModelViewSet):
         if admin_user.company_id and branch.company_id != admin_user.company_id:
             raise ValidationError('Нельзя создавать очередь в чужом филиале.')
 
-        serializer.save()
+        queue = serializer.save()
+        invalidate_queue_snapshot_cache(queue.id)
 
     def perform_update(self, serializer):
         admin_user = self._require_admin()
@@ -221,7 +223,13 @@ class AdminQueueViewSet(viewsets.ModelViewSet):
         if branch and branch.company_id != admin_user.company_id:
             raise ValidationError('Нельзя переносить очередь в чужой филиал.')
 
-        serializer.save()
+        queue = serializer.save()
+        invalidate_queue_snapshot_cache(queue.id)
+
+    def perform_destroy(self, instance):
+        queue_id = instance.id
+        super().perform_destroy(instance)
+        invalidate_queue_snapshot_cache(queue_id)
 
 
 class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
@@ -246,7 +254,8 @@ class OperatorQueueViewSet(viewsets.ReadOnlyModelViewSet):
         queue = self.get_object()
         serializer = self.get_serializer(queue, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        queue = serializer.save()
+        invalidate_queue_snapshot_cache(queue.id)
         return Response(serializer.data, status=drf_status.HTTP_200_OK)
 
 class TicketViewSet(
