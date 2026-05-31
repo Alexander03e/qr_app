@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-DOMAIN="${DOMAIN:-cfifeg1.fvds.ru}"
+DOMAIN="${DOMAIN:-qq-flow.ru}"
 NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}.conf"
 
 cd "${DEPLOY_DIR}"

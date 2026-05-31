@@ -1,6 +1,6 @@
 # Развертывание QueueFlow
 
-Документ описывает первичную раскатку на чистый сервер и последующие обновления. Домен: `cfifeg1.fvds.ru`.
+Документ описывает первичную раскатку на чистый сервер и последующие обновления. Домен: `qq-flow.ru`.
 
 ## Что добавлено
 
@@ -8,7 +8,7 @@
 - Корневой `docker-compose.yml` поднимает локально единый комплект: PostgreSQL, backend, frontend, Prometheus.
 - `deploy/compose.prod.yml` запускает production-сервисы из готовых Docker-образов.
 - `.github/workflows/docker-publish.yml` собирает и публикует образы в GitHub Container Registry при push в `main`.
-- `deploy/nginx/cfifeg1.fvds.ru.conf` проксирует внешний домен на frontend-контейнер.
+- `deploy/nginx/qq-flow.ru.conf` проксирует внешний домен на frontend-контейнер.
 
 ## Docker registry и CI/CD
 
@@ -26,7 +26,7 @@ Workflow запускается на push в `main`, на tag вида `v1.2.3`,
 
 ## Первое развертывание на чистый сервер
 
-1. Направь DNS A-запись `cfifeg1.fvds.ru` на IP сервера.
+1. Направь DNS A-запись `qq-flow.ru` на IP сервера.
 
 2. Убедись, что изменения с deploy-файлами уже попали в `main`, а workflow `Build and publish Docker images` успешно опубликовал backend/frontend образы.
 
@@ -87,15 +87,15 @@ bash /home/develop/queueflow/scripts/deploy.sh
 
 ```bash
 docker compose -f /home/develop/queueflow/compose.prod.yml ps
-curl -I http://cfifeg1.fvds.ru
+curl -I http://qq-flow.ru
 ```
 
 После этого интерфейсы доступны:
 
-- клиентский: `http://cfifeg1.fvds.ru/c/:queueId`;
-- операторский: `http://cfifeg1.fvds.ru/o`;
-- административный: `http://cfifeg1.fvds.ru/a`;
-- API: `http://cfifeg1.fvds.ru/api/v1/`.
+- клиентский: `http://qq-flow.ru/c/:queueId`;
+- операторский: `http://qq-flow.ru/o`;
+- административный: `http://qq-flow.ru/a`;
+- API: `http://qq-flow.ru/api/v1/`.
 
 ## HTTPS
 
@@ -103,16 +103,16 @@ curl -I http://cfifeg1.fvds.ru
 
 ```bash
 apt-get install -y certbot python3-certbot-nginx
-certbot --nginx -d cfifeg1.fvds.ru
+certbot --nginx -d qq-flow.ru
 ```
 
-Certbot изменит активный Nginx-конфиг в `/etc/nginx/sites-available/cfifeg1.fvds.ru.conf`: добавит `listen 443 ssl`, пути к сертификатам и HTTP -> HTTPS redirect. Deploy-скрипт не будет перезаписывать уже существующий серверный Nginx-конфиг, если явно не передать `FORCE_NGINX_CONFIG=1`.
+Certbot изменит активный Nginx-конфиг в `/etc/nginx/sites-available/qq-flow.ru.conf`: добавит `listen 443 ssl`, пути к сертификатам и HTTP -> HTTPS redirect. Deploy-скрипт не будет перезаписывать уже существующий серверный Nginx-конфиг, если явно не передать `FORCE_NGINX_CONFIG=1`.
 
 После включения HTTPS в `/home/develop/queueflow/.env` можно выставить:
 
 ```bash
-DJANGO_CSRF_TRUSTED_ORIGINS=https://cfifeg1.fvds.ru
-DJANGO_CORS_ALLOWED_ORIGINS=https://cfifeg1.fvds.ru
+DJANGO_CSRF_TRUSTED_ORIGINS=https://qq-flow.ru
+DJANGO_CORS_ALLOWED_ORIGINS=https://qq-flow.ru
 DJANGO_SESSION_COOKIE_SECURE=True
 DJANGO_CSRF_COOKIE_SECURE=True
 ```

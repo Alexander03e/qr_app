@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/home/develop/queueflow}"
-DOMAIN="${DOMAIN:-cfifeg1.fvds.ru}"
+DOMAIN="${DOMAIN:-qq-flow.ru}"
 
 install_compose_plugin_from_github() {
   local arch
